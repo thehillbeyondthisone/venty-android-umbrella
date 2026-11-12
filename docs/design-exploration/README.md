@@ -1,22 +1,26 @@
 # Venty Umbrella: visual directions and light gamification
 
-Serve [index.html](index.html) locally for three working visual concepts (instructions below). No build, account, or hardware is needed. The preview uses synthetic data and resets on reload. It does not send device commands or change the Android app.
+Serve [style-studies.html](style-studies.html) locally for three distinct visual styles, or [index.html](index.html) for collection mechanics (instructions below). No build, account, or hardware is needed. The preview uses synthetic data and resets on reload. It does not send device commands or change the Android app.
 
 ![Three control directions: Quiet Instrument, Fieldnotes and Signal](control-options.png)
 
 [View Collections](collections-options.png) · [View all three collection types](collection-types.png) · [View repeatable rituals](rituals-options.png).
 
-## Recommendation
+## Visual styles
 
-**Quiet Instrument with optional Collections and Rituals views** is the best first iteration. It preserves the current dial and recognizable device controls, removes competing effects, and gives connection state, target temperature, and heater action a clearer hierarchy. Fieldnotes is the strongest change in personality; Signal is the strongest dark-mode direction.
+Open [the distinct style studies](style-studies.html) for the current visual comparison. Typography, materials, composition, control shapes, and collection presentation change together.
 
-| Direction | Visual language | Main interaction | Why choose it | Relative Compose effort |
-| --- | --- | --- | --- | --- |
-| **01 Quiet Instrument** | Porcelain `#F7F9F6`, pine `#205E50`, system sans, thin dial, rounded surfaces | Familiar dial with precise +/- and one primary heater button | Calm, readable, familiar; recommended default | Small–medium: theme and dashboard layout; add proper light theme support |
-| **02 Fieldnotes** | Oat `#F3EDDF`, walnut `#6A4730`, serif headlines, ruled sections, stamp shapes | Linear target control and a journal-like presentation | A personal, warm object with room for notes | Medium: new layout, typography, and new journal data |
-| **03 Signal** | Graphite `#181E24`, lichen `#D4E7A0`, bundled Barlow figures, monospace labels | Large numeric readout and a compact linear control | Technical, restrained, and suited to dark environments | Small–medium: dark theme and dashboard layout |
+![Handwritten journal, cassette-futurist deck, and sculptural object](style-studies.png)
 
-These are layout and product explorations, not merely accent palettes. The preview deliberately isolates the main controls and proposed Collections and Rituals views; it is not a complete replacement for the app's existing features.
+| Direction | Visual language | Control treatment | Collection treatment |
+| --- | --- | --- | --- |
+| **Handwritten journal** | Bundled Caveat handwriting, ruled paper, blue ink, irregular outlines, taped notes | Pencil-drawn target circle, handwritten action, small ink-ring adjustments | A sketchbook: handwritten tasting notes, stamped Atlas pages, a drawn Ember Trail |
+| **Cassette-futurist deck** | Olive moulded housing, amber LCD, serial labels, recessed surfaces, visible tape reels | Target-trim fader, chunky transport keys, hardware-style status display | A tape archive: labelled cases, track lists, and recorded memories |
+| **Sculptural object** | Monumental figures, asymmetric whitespace, ceramic-like form, quiet material shading | Oversized target, tactile ring illustration, precise adjustment and a single pill action | Personal sculptural keepsakes, including a growing trail object |
+
+Target sliders, +/- adjustments and heater toggles work in each study. Navigation and collection snippets in this page illustrate art direction. The ceramic ring is a material study, not a draggable control. The [earlier interactive collection prototype](index.html) remains available to explore collection mechanics across the earlier Quiet Instrument, Fieldnotes, and Signal layouts.
+
+The Caveat font is bundled with its SIL Open Font License under `fonts/`; there are no remote font requests at preview time. Native Compose implementation would need semantic state colours, scalable controls, TalkBack descriptions, and optional simplified surfaces alongside these expressive styles.
 
 ### Interaction coverage in the preview
 
