@@ -1,14 +1,14 @@
 # Venty Umbrella: visual directions and light gamification
 
-Open [index.html](index.html) in a browser for three working visual concepts. No build, server, account, or hardware is needed. The preview uses synthetic data and resets on reload. It does not send device commands or change the Android app.
+Serve [index.html](index.html) locally for three working visual concepts (instructions below). No build, account, or hardware is needed. The preview uses synthetic data and resets on reload. It does not send device commands or change the Android app.
 
 ![Three control directions: Quiet Instrument, Fieldnotes and Signal](control-options.png)
 
-[View the optional Care screens](care-options.png).
+[View Collections](collections-options.png) · [View all three collection types](collection-types.png) · [View repeatable rituals](rituals-options.png).
 
 ## Recommendation
 
-**Quiet Instrument with an optional Care view** is the best first iteration. It preserves the current dial and recognizable device controls, removes competing effects, and gives connection state, target temperature, and heater action a clearer hierarchy. Fieldnotes is the strongest change in personality; Signal is the strongest dark-mode direction.
+**Quiet Instrument with optional Collections and Rituals views** is the best first iteration. It preserves the current dial and recognizable device controls, removes competing effects, and gives connection state, target temperature, and heater action a clearer hierarchy. Fieldnotes is the strongest change in personality; Signal is the strongest dark-mode direction.
 
 | Direction | Visual language | Main interaction | Why choose it | Relative Compose effort |
 | --- | --- | --- | --- | --- |
@@ -16,53 +16,77 @@ Open [index.html](index.html) in a browser for three working visual concepts. No
 | **02 Fieldnotes** | Oat `#F3EDDF`, walnut `#6A4730`, serif headlines, ruled sections, stamp shapes | Linear target control and a journal-like presentation | A personal, warm object with room for notes | Medium: new layout, typography, and new journal data |
 | **03 Signal** | Graphite `#181E24`, lichen `#D4E7A0`, bundled Barlow figures, monospace labels | Large numeric readout and a compact linear control | Technical, restrained, and suited to dark environments | Small–medium: dark theme and dashboard layout |
 
-These are layout and product explorations, not merely accent palettes. The preview deliberately isolates the main controls and proposed Care view; it is not a complete replacement for the app's existing features.
+These are layout and product explorations, not merely accent palettes. The preview deliberately isolates the main controls and proposed Collections and Rituals views; it is not a complete replacement for the app's existing features.
 
 ### Interaction coverage in the preview
 
-- Change targets within the Venty's 40–210 °C range using a slider or +/- buttons.
-- Simulate heater off, heating, ready, and disconnected states. Disconnected controls are disabled.
-- Switch each concept between Control and Care, or compare all Care views together.
-- Collect one care stamp, prevent a duplicate collection, and undo it.
-- Use keyboard focus, arrow-key tab navigation, and native range keyboard controls.
-- Reset all synthetic data; no care events or preferences persist.
+- Change targets within the Venty's 40–210 °C range with a slider or +/- buttons; simulate heater off, heating, ready, and disconnected states.
+- Compare Control, Collections, and Rituals across all three visual directions. Keyboard arrow/Home/End navigation works across the three tabs.
+- Browse a Temperature Atlas, write/edit/remove a one-line Field Note, and inspect an Ember Trail. All examples are synthetic.
+- Pause automatic collection independently in each concept. Add a synthetic session with the external **Add sample session** preview control; paused collections stay unchanged. Resuming never backfills the missed example. Repeated clicks cannot duplicate it.
+- Inspect retrospective discoveries, rate two or three existing temperature entries, and dismiss a weekly postcard by button or horizontal swipe.
+- Reset the preview. Reload also restores the initial examples: this is a design prototype, not the permanent native data store described below.
 
-The dial arc is a target-setting visualization, not a measurement or heat-up progress estimate. A production version must label target and readiness explicitly, as the preview does. The state selector is for design review only.
+The dial arc visualizes the target, not measured temperature or heat-up progress. Venty reports target/readiness but no live temperature. The scenario, sample-session, and reset controls belong to the design-review toolbar, not the product.
 
-## Light, repeatable gamification
+## Collections: fill in over time, never expire
 
-**Reward looking after the device and useful reflection. Keep consumption metrics informational.** The existing project already tracks puffs, session durations, longest draws, use streaks, and monthly totals; turning those into quests or XP would encourage more use. Prefer small, predictable acknowledgements that take seconds and do not require daily engagement.
+Collections record what happened naturally; they do not assign tasks, prescribe temperatures, or ask for extra sessions. There is no completion percentage, deadline, required order, or locked-device functionality.
 
-| Idea | Repeatable trigger | Small reward | Minimum implementation | Priority |
-| --- | --- | --- | --- | --- |
-| **Care stamps** | User marks a scheduled care task complete after doing it | A stamp in a permanent, private collection | Per-device care schedule and event store; completion, skip, snooze, undo | **First** |
-| **Field notes** | Optional note on an existing session, or a standalone device observation | A saved card with a small illustration; no XP | Separate note store, edit/delete, optional link to stable session identity | Next |
-| **Monthly keepsake** | User chooses to open a monthly recap | A collectible cover, favorite preset, notes and care summary | Reuse monthly filtering; include new notes/care data; handle empty months | Next |
-| **Make it yours** | One-time setup steps, such as naming a device or saving a preset | A short checklist acknowledgement | A few local preferences; all controls and themes available from the start | Small optional addition |
-| **Care palette collection** | A few distinct eligible care events over time | Cosmetic stamp styles the user can select | Cosmetic state only; all functional controls remain available | Later, only if users enjoy stamps |
+| Collection | What grows | Behavior |
+| --- | --- | --- |
+| **Temperature Atlas** | A poster stamped with the 5 °C bands already used | A personal map of where the user likes to be. Repeated bands leave the same stamp; all orders are valid. The poster need never be filled. |
+| **Field Notes** | Optional one-line tasting notes on existing sessions | A growing private journal is its own reward. Notes can be edited or removed, with no points for writing. A manually saved standalone observation can be supported too. |
+| **Ember Trail** | One bead per recorded session, in a necklace or constellation | An aesthetic object with no destination. Colours come from Accent or the recorded temperature band; bead size/value never depends on duration, puffs or temperature. |
 
-### Smallest useful loop
+### Achievements and unlockables
 
-1. **Notice:** a quiet Care card shows the next user-scheduled task. Reminders are off until explicitly enabled; no generic daily push.
-2. **Act:** mark it done after following the manufacturer's care guidance. Self-reporting is sufficient; the app cannot detect cleaning.
-3. **Acknowledge:** add one stamp and a short “A small thing, well done.” message. Use a brief, optional animation, respecting reduced motion and haptic preferences.
-4. **Return whenever:** the collection remains. A missed date or skipped task never removes progress or creates a “broken streak.”
+Keep the user's names, but reveal achievements **only retrospectively**, after they occur during ordinary use. Do not show locked silhouettes, “4/5 temperatures,” achievement alerts, or suggested next sessions. The preview has a folded “Quiet discoveries” section with earned labels only.
 
-The preview starts with **one synthetic collected stamp** and one eligible task so the second stamp and undo are immediately reviewable. The three slots illustrate a collection, not three tasks that must be completed this month. A real collection can continue without a deadline.
+| Achievement | Passive trigger | Meaning |
+| --- | --- | --- |
+| **First low and slow** | First qualifying recorded session whose effective targets stayed at or below 160 °C | A label for that experience, without suggesting a temperature change. Not a medical or safety claim. |
+| **Explorer** | Five distinct recorded 5 °C bands | A retrospective observation, never a five-band quest. |
+| **Steady hand** | A recorded session with no user target/mode/ramp changes | Recognition of an existing pattern; don't count polling duplicates as changes. |
+| **Evening ritual** | Three recorded evening sessions, on any dates | A pattern across the same part of the day. No consecutive days, time window, or requirement to maintain it. |
 
-### Rules that keep it light
+**Unlocks stay cosmetic.** Temperature experiments, session counts, higher temperatures, Boost/Superboost and longer sessions never unlock colours or functional features. The natural tension in “Explorer” and a bead per session is handled by keeping both passive, with no prompts, score, goals or progress notifications.
 
-- **No consumption XP:** no rewards for puff count, draw length, heat level, session duration, Boost/Superboost, consecutive use days, or opening the app daily.
-- **No hardware coupling:** collecting a stamp, viewing a recap, or completing a task must never start heating, change a target, or run a ramp/pump.
-- **No reward grind:** one stamp per eligible scheduled task occurrence, including repeated taps, process restarts, and offline retries. Undo removes that event and its stamp; redoing it restores the same event rather than generating extra awards.
-- **No guilt:** no lost streaks, countdown pressure, leaderboards, randomized rewards, or expiring collections. Care can be hidden entirely.
-- **User-set cadence:** care schedules follow the user's chosen timing and manufacturer guidance. Changing the clock or time zone must not create duplicate occurrences.
-- **Private by default:** local storage, no account, no automatic sharing. Provide clear export/delete behavior alongside history controls. Disabling reminders stops them; hiding Care preserves the collection unless the user deletes it.
-- **Cosmetics only:** any future unlock affects stamps or illustrations. Device operation, accessibility, and ordinary theme selection remain available to everyone.
+## Repeatable rituals
 
-### A compact first release
+### Dial-in mode
 
-Ship only **one user-created care task, a permanent stamp collection, completion/undo, skip/snooze, and an opt-in reminder**. Keep notes and keepsakes for later. Show Care in an overflow menu or secondary navigation, not above the heater action. Measure whether people find it useful through feedback; if analytics are added later, get an explicit opt-in and avoid collecting session or substance details.
+Choose two or three temperatures and a short mental note, then compare impressions across existing sessions with optional 🙂 / 😐 ratings. Save a comparison so it can be revisited whenever another relevant entry already exists. The preview lets the user change the comparison temperatures and add a third; ratings are available only for temperatures represented in the synthetic journal.
+
+A comparison does not start heating, set targets, configure a ramp, schedule use, prescribe a sequence, or notify the user to complete it. There is no “next session” task and no deadline. Native ratings should attach to stable session IDs, not just temperature numbers, so two experiences at the same temperature remain distinguishable. The preview groups the sample entries by temperature for a compact illustration.
+
+### Weekly postcard
+
+Generate a Wrapped-lite card on demand inside the app: favourite band, recorded-session count, and a colour field. No ranking, comparison with other weeks, growth arrows, streak or push. Dismiss with one horizontal swipe or an accessible button. Dismissal does not delete the journal; the card can be reopened from its archive. An empty week is quiet, not a missed achievement. A partially tracked week must say “recorded sessions.”
+
+### Seasonal palette
+
+Make new Accent colours available gradually with **elapsed calendar time since opt-in**, independent of sessions, app opens, achievements or effort. Opening after a few months exposes all colours whose date has passed; nothing expires and there is no “come back today” prompt. Checking for available colours happens in-app, without background notifications. Base palettes, contrast options, and device controls remain available from the start. The preview illustrates the calendar rule in text; it does not simulate calendar unlocks.
+
+## Delight without pressure
+
+- A long-press on the logo can reveal one small ember animation. Provide a keyboard/TalkBack equivalent; reduced motion uses a static ember rather than flicker. No reward or tracking event.
+- **Sound off by default.** An optional soft chime can play once on a genuine transition to reached. Let the user choose their own local sound, preview it explicitly, and disable it again. Respect platform audio preferences; reconnecting at an already-reached state should not chime repeatedly. No sound control or playback is implemented in this visual preview.
+- **Do not track:** pause all new automatic collection and automatic persistent session retention. Device controls and transient live state continue working. Existing notes, stamps, beads, achievements and palette access remain. The paused period is not stored for later backfill. Manually saving a note remains an explicit user action on an existing entry, not silent tracking. Native implementation must gate the existing history/lifetime counters too, rather than only hiding the collection UI.
+- **No push reminders.** Skip streaks, daily goals, leaderboards, countdown bonuses, speed rewards, badges for longer draws, and any prompt asking the user to consume more.
+- Local data by default, no account or automatic sharing. Provide export, explicit deletion, and an accessible description of what pausing means. Collections never expire automatically, while the user can still intentionally delete their data.
+
+## Collection integrity and a compact first release
+
+Start with **Field Notes, the Temperature Atlas, an Accent-coloured Ember Trail, and Do not track**. Add the weekly postcard and Dial-in comparisons next. Passive achievements, calendar palettes, easter eggs and optional chimes can follow after the core collection behavior is clear.
+
+- Give sessions stable IDs and versioned storage. Collection events are idempotent by session/band; duplicate polls, reconnects and repeated imports never award twice. Ember Trail has exactly one bead per retained eligible session.
+- Store collection summaries separately from the current 500-session history window. Ageing out of recent history must not remove stamps, beads or journal entries. Explicit deletion is separate from automatic retention.
+- Derive Atlas bands from confirmed reached effective-target segments during a genuine session, not a slider being dragged. Venty's readiness flag is sufficient to establish a target was reached; never invent measured temperatures. Use half-open bands `[185,190) °C`, with the device maximum in its final band. Decide unit boundaries in Celsius, then convert labels for Fahrenheit.
+- The current `SessionRecord` stores maximum/average targets but not all reached segments or target-change counts. Existing data can seed notes and a trail. For Atlas/achievements, either mark historical aggregate estimates as such or start exact collection at opt-in; never treat an average or a maximum as proof of every band traversed. Exact low-and-slow and Steady hand need the new segment/change data.
+- Scope device-specific state by stable device identity. “Steady hand” counts deliberate changes to effective target/mode/ramp, including watch/widget commands; it ignores identical polling reports. Merely selecting a comparison never counts as a change.
+- Pause/resume must gate writes, not merely hide UI. Do not persist buffered events on resume or increment lifetime counters during the pause. A session spanning a pause needs an explicit policy; prefer excluding it from automatic collections and retention, with no cached backfill.
+- Weekly calculations use the user's local week and time zone; favourite-band ties use the earliest recorded occurrence among the tied bands, as in the preview, rather than preferring the highest temperature. Use a controllable clock for calendar availability, and never revoke an available palette after a time-zone or clock change.
 
 ## How this maps to the current Android code
 
@@ -71,33 +95,33 @@ Reviewed against upstream commit `08355a64d8aede04733d68483de22bd569ee96ef`.
 | Existing area | Suggested change after a direction is selected |
 | --- | --- |
 | `ui/theme/Theme.kt` | Add semantic light/dark palettes and a visual-style preference. Keep wallpaper/device accent behavior intentional and preserve semantic heating, ready, warning, and disconnected states. |
-| `ui/dashboard/DashboardScreen.kt` | Extract device header, target control, primary heater action, and optional care entry into focused composables. Preserve history/settings access and current connection handling. |
+| `ui/dashboard/DashboardScreen.kt` | Extract device header, target control, primary heater action, and optional collection entry into focused composables. Preserve history/settings access and current connection handling. |
 | `ui/dashboard/TemperatureDial.kt` | Reuse dial geometry and input logic for Quiet; replace hardcoded track/marker colors with semantic theme tokens. Linear alternatives need the same input bounds and accessibility support. |
 | `ui/session/SessionWidgets.kt` | Offer an optional note after session completion, without awarding consumption metrics. |
-| `prefs/PrefsStore.kt` | Store style, Care visibility, reminder consent, and schedule preferences; avoid adding care events into unrelated settings. |
-| New `care/` area | Pure care eligibility rules and a local event store keyed by stable device identity, task ID and occurrence ID; expose state to Compose. No dependency on BLE command methods. |
-| `session/SessionTracker.kt` | Keep consumption tracking separate from reward rules. If notes reference sessions, introduce stable identities/migration rather than using list positions; current history retains at most 500 records. Keep notes/care when old sessions age out. |
-| `session/Wrapped.kt` and `ui/wrapped/WrappedScreen.kt` | Keep factual stats neutral; place care and optional notes in a keepsake. Do not turn `longestStreakDays`, `longestDrawMs`, or puff/session totals into rewarded achievements. |
+| `prefs/PrefsStore.kt` | Store style, collection consent/pause, visibility, optional chime preference and calendar palette availability; no reminder preference. |
+| New `collections/` area | Stable session-linked notes, band stamps, beads, passive discoveries and calendar availability. Pure rules plus versioned local storage; no dependency on BLE command methods. |
+| `session/SessionTracker.kt` | Add stable identities, confirmed reached-target segments and deliberate change counts. Gate automatic persistence and lifetime counters with Do not track. Preserve collections when the current 500-session window rolls over. |
+| `session/Wrapped.kt` and `ui/wrapped/WrappedScreen.kt` | Reuse neutral summaries for weekly postcards and optional journal views. Do not turn `longestStreakDays`, `longestDrawMs`, or puff/session totals into rewarded goals. |
 | `ble/DeviceKind.kt` | Continue capability-based layouts: Venty has no live-temperature reading; Volcano has a live reading and pump, but no battery/Boost. |
 
-Before shipping native changes, preserve all existing controls: presets, normal/Boost/Superboost and offsets, ramps, heater, settings/history, and Volcano pump. Advanced controls can live in an explicitly labeled sheet, accessible in one tap. Keep target, mode-adjusted effective target, and live temperature distinct. Respect each device's bounds (Venty 40–210 °C; Volcano 40–230 °C), connection state, and existing reduced-motion behavior. A new navigation shell must not imply Care replaces history.
+Before shipping native changes, preserve all existing controls: presets, normal/Boost/Superboost and offsets, ramps, heater, settings/history, and Volcano pump. Advanced controls can live in an explicitly labeled sheet, accessible in one tap. Keep target, mode-adjusted effective target, and live temperature distinct. Respect each device's bounds (Venty 40–210 °C; Volcano 40–230 °C), connection state, and existing reduced-motion behavior. A new navigation shell must not imply Collections replaces history.
 
 ### Native acceptance checks for a later implementation
 
-- Hardware controls remain usable when Care is off, hidden, or has no data.
+- Hardware controls remain usable when collection is paused, hidden, or has no data.
 - TalkBack announces target, units, connection and heater state; +/- and all controls have at least 48 dp touch targets. No meaning depends on color alone.
 - Light/dark palettes meet contrast requirements; 200% font scaling does not hide heater or pump controls.
 - Phone layouts work at narrow widths and with navigation/IME insets. The preview is a layout study, not validation of Compose accessibility.
 - Reconnect, heating/ready transitions and device limits behave exactly as before; Volcano retains distinct pump behavior.
-- Care eligibility tests cover duplicate completion, undo/redo, app restart, skip/snooze, time zones and date changes. Use a controllable clock and stable occurrence IDs.
-- Local event migrations, clearing/exporting data and reminder cancellation are verified. Cosmetic progress never calls BLE writes.
+- Collection tests cover band boundaries, reached-target filtering, stable IDs, duplicate events, pause/resume across sessions, no backfill, history rollover, explicit deletion, and calendar/time-zone changes.
+- Verify local migrations, export/delete, weekly dismissal, no push scheduling, default-muted chimes and user-selected audio. Cosmetic state and comparisons never call BLE writes.
 
 No Kotlin, BLE, Gradle, signing, update URLs or workflows were changed by this exploration. The repo's workflows remain manual-only.
 
 ## Previewing and validation
 
-Open `index.html` directly, or serve the repository using `python3 -m http.server 8765` and visit `http://localhost:8765/docs/design-exploration/`.
+From the repository root, run `python3 -m http.server 8765` and visit `http://localhost:8765/docs/design-exploration/`. Keep `index.html`, `preview.js`, and `collections.css` together; the bundled font is referenced from the repository. The managed browser blocks direct `file://` navigation, so validation used the local HTTP server.
 
-`control-options.png` and `care-options.png` are browser-rendered comparisons of the actual HTML concepts. They can be regenerated after changing the preview. The page uses system fonts and the repo's existing Barlow font; it makes no external asset requests.
+`control-options.png`, `collections-options.png`, `collection-types.png` and `rituals-options.png` are browser-rendered comparisons of the actual HTML concepts. They can be regenerated after changing the preview. The page uses system fonts and the repo's existing Barlow font; it makes no external asset requests.
 
-Preview validation covers interactions, 40/210 °C limits, disconnected controls, care duplicate prevention/undo, keyboard tabs, all state labels, and desktop/mobile overflow. Native build/tests were not run because this change contains only design documentation and a browser prototype.
+Preview validation covers interactions, 40/210 °C limits, disconnected controls, collection pause/no backfill/idempotence, escaped note editing, passive discoveries, comparison ratings, postcard dismissal/swipe, keyboard tabs, all state labels, and desktop/mobile overflow. Native build/tests were not run because this change contains only design documentation and a browser prototype.
