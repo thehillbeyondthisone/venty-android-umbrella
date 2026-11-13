@@ -6,11 +6,12 @@ This branch contains the **native Android app**, plus the earlier browser design
 
 ## Try the Android app
 
-1. Open this fork's [Releases page](https://github.com/thehillbeyondthisone/venty-android-umbrella/releases) while signed into the GitHub account that owns the fork. The first test build is a **draft release** visible to the owner.
-2. Open **SubVenty 0.4.0 — native preview 1** and expand **Assets**.
-3. Download `subventy-0.4.0-preview1.apk` on your Android phone and open it. Android may ask you to allow installs from the browser or Files app you used.
-4. Launch **SubVenty**. Try **Demo Venty** or **Demo Volcano** first. Demo entries are labeled and stored separately from hardware entries.
-5. For a real device, allow Nearby devices/Bluetooth access, enable Bluetooth, select **Scan for devices**, then select your Venty or Volcano.
+1. On your Android phone, [download the SubVenty APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview1/subventy-0.4.0-preview1.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
+2. Open the downloaded APK. Android may ask you to allow installs from the browser or Files app you used.
+3. Launch **SubVenty**. Try **Demo Venty** or **Demo Volcano** first. Demo entries are labeled and stored separately from hardware entries.
+4. For a real device, allow Nearby devices/Bluetooth access, enable Bluetooth, select **Scan for devices**, then select your Venty or Volcano.
+
+The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview1) contains the APK and checksum. The binary is kept off the implementation branch. GitHub rejected release-asset uploads for the current integration, so this branch supplies the download.
 
 Android 8.0+ is required. This preview uses a separate application ID (`io.github.thehillbeyondthisone.subventy`), so it can coexist with the upstream Venty app. Close/disconnect the other controller before connecting SubVenty to the same physical device.
 

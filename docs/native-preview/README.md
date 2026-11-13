@@ -2,6 +2,8 @@
 
 This is the Kotlin/Compose implementation, package `io.github.thehillbeyondthisone.subventy`, version `0.4.0-subventy.1` (code 9). It installs alongside the original app.
 
+[Download the APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview1/subventy-0.4.0-preview1.apk?raw=true). The separate builds branch contains the APK and checksum; the source implementation branch contains no APK binary.
+
 ## Verification
 
 - Final local Gradle debug APK build succeeds with Android SDK 36 and JDK 17; APK v2 signature verifies.
