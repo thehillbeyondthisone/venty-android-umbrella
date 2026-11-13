@@ -1,5 +1,7 @@
 # Native SubVenty preview 1
 
+**Current build: [preview 2, with screenshots and validation](iteration2/README.md).** The notes below record the first native preview.
+
 This is the Kotlin/Compose implementation, package `io.github.thehillbeyondthisone.subventy`, version `0.4.0-subventy.1` (code 9). It installs alongside the original app.
 
 [Download the APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview1/subventy-0.4.0-preview1.apk?raw=true). The separate builds branch contains the APK and checksum; the source implementation branch contains no APK binary.

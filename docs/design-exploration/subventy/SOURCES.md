@@ -2,6 +2,8 @@
 
 The [native Android implementation](../../../README.md) is now available. This document describes the browser reference and its source research.
 
+The [second native preview](../../native-preview/iteration2/README.md) follows the user's subsequent pair of SubSeven/Legacy screenshots: tree navigation, a charcoal workspace, a blue icon toolbar, an embossed S7 badge and square utility windows. Its palette and geometry are adaptations of those supplied images, not the exact 2.1.2 colour constants documented below. The original browser reconstruction remains unchanged.
+
 [Open the reconstruction](index.html). Serve the repository root with `python3 -m http.server 8765`, then open `http://localhost:8765/docs/design-exploration/subventy/`.
 
 ![SubVenty desktop and Android interface](subventy.png)
