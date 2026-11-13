@@ -38,15 +38,18 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 
+/** Window chrome tokens, now on the after-hours palette (see [Night]). */
 internal object S7 {
-    val Caption = Color(0xFF8076B4)
-    val Panel = Color(0xFF124D76)
-    val Workspace = Color(0xFF101112)
-    val Selection = Color(0xFF004C80)
-    val Text = Color(0xFFE4E4E9)
-    val Muted = Color(0xFFA7ADB9)
+    val Caption = Night.CaptionEnd
+    val Panel = Night.Panel
+    val Workspace = Night.Workspace
+    val Selection = Night.Selection
+    val Text = Night.Text
+    val Muted = Night.Muted
     val Link = Color(0xFF83AAE3)
-    val Border = Color(0xFF737580)
+    val Border = Color(0xFF5A5F78)
+    /** The 98-style active caption: deep violet into lavender. */
+    val CaptionBrush = Brush.horizontalGradient(listOf(Night.CaptionStart, Night.CaptionEnd))
 }
 
 @Composable internal fun S7Text(text: String, size: Int = 12, color: Color = S7.Text, modifier: Modifier = Modifier) {
@@ -85,7 +88,7 @@ internal object S7 {
         if (text == "−") contentDescription = "Decrease value"
     }
         .border(1.dp, if (enabled) Color(0xFF858AAF) else Color(0xFF454951))
-        .background(Brush.verticalGradient(listOf(Color(0xFF164D74), Color(0xFF103C5B))))
+        .background(Brush.verticalGradient(listOf(Night.PanelHi, Night.Panel)))
         .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
         .padding(horizontal = 9.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
         S7Text(text, color = if (enabled) S7.Text else Color(0xFF737987))
@@ -106,6 +109,7 @@ internal object S7 {
         .border(1.dp, Color(0xFF15354D)).horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically) {
         S7IconButton("Navigation tree", Icons.Outlined.AccountTree, onNavigate)
+        S7IconButton("Terminal", Icons.Outlined.Terminal, { onPage(PAGE_TERMINAL) })
         S7IconButton("Device information", Icons.Outlined.Computer, { onPage(0) })
         S7IconButton("Temperature controls", Icons.Outlined.Thermostat, { onPage(1) })
         S7IconButton("Temperature ramp", Icons.Outlined.Timeline, { onWindow("ramp") })
@@ -117,8 +121,13 @@ internal object S7 {
     }
 }
 
+internal const val PAGE_TERMINAL = 10
+internal const val PAGE_ICEBREAKER = 11
+internal const val PAGE_LOOT = 12
+
 private data class TreeGroup(val name: String, val children: List<Pair<Int, String>>)
 private val groups = listOf(
+    TreeGroup("night", listOf(PAGE_TERMINAL to "terminal", PAGE_ICEBREAKER to "icebreaker", PAGE_LOOT to "loot")),
     TreeGroup("system", listOf(0 to "connection", 7 to "link monitor")),
     TreeGroup("control", listOf(1 to "temperature", 8 to "ramp editor", 9 to "device settings")),
     TreeGroup("archive", listOf(2 to "session log", 3 to "collections", 4 to "field notes")),
@@ -126,7 +135,7 @@ private val groups = listOf(
 )
 
 @Composable internal fun NavigationTree(page: Int, onPage: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.background(Color(0xFF0C0D0F)).verticalScroll(rememberScrollState()).padding(vertical = 5.dp)) {
+    Column(modifier.background(Night.Tree).verticalScroll(rememberScrollState()).padding(vertical = 5.dp)) {
         groups.forEach { group ->
             var expanded by rememberSaveable(group.name) { mutableStateOf(true) }
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -155,17 +164,24 @@ private val groups = listOf(
 @Composable internal fun UtilityWindow(title: String, onClose: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp), contentAlignment = Alignment.Center) {
-            Column(Modifier.widthIn(max = 480.dp).fillMaxWidth().heightIn(max = maxHeight)
-                .border(2.dp, S7.Border).background(S7.Panel).semantics { paneTitle = title }) {
-                Row(Modifier.fillMaxWidth().background(S7.Caption).heightIn(min = 48.dp).padding(start = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    S7Text(title, 13, Color.White, Modifier.weight(1f))
-                    S7IconButton("Close $title", Icons.Outlined.Close, onClose)
-                }
-                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(11.dp), content = content)
-            }
+            WindowFrame(title, onClose, Modifier.heightIn(max = maxHeight), content)
         }
+    }
+}
+
+/** The utility window itself, without the dialog, so it can also be drawn inline. */
+@Composable internal fun WindowFrame(title: String, onClose: () -> Unit, modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.widthIn(max = 480.dp).fillMaxWidth()
+        .border(2.dp, S7.Border).background(S7.Panel).semantics { paneTitle = title }) {
+        Row(Modifier.fillMaxWidth().background(S7.CaptionBrush).heightIn(min = 48.dp).padding(start = 8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            SilverSeven(Modifier.size(16.dp))
+            S7Text(title, 13, Color.White, Modifier.weight(1f).padding(start = 6.dp))
+            S7IconButton("Close $title", Icons.Outlined.Close, onClose)
+        }
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp), content = content)
     }
 }
 

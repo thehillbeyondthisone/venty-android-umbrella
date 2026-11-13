@@ -52,6 +52,10 @@ import java.text.DateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.Font
+import io.github.orth4x0r.venty.R
 
 private val Caption = S7.Caption
 private val Panel = S7.Panel
@@ -80,7 +84,17 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
     val presets by app.prefs.presets.collectAsStateWithLifecycle()
     val live by app.sessions.live.collectAsStateWithLifecycle()
     val linkEvents by controller.linkEvents.collectAsStateWithLifecycle()
-    var page by rememberSaveable { mutableIntStateOf(0) }
+    val night by app.night.prefs.collectAsStateWithLifecycle()
+    val loot by app.night.loot.collectAsStateWithLifecycle()
+    val secrets by app.night.secrets.collectAsStateWithLifecycle()
+    val feed by app.night.feed.collectAsStateWithLifecycle()
+    var termInput by rememberSaveable { mutableStateOf("") }
+    var saver by remember { mutableStateOf(false) }
+    var lastTouch by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var game by rememberSaveable(stateSaver = IcebreakerSaver) { mutableStateOf(IcebreakerGame.new()) }
+    var pulled by rememberSaveable { mutableStateOf<String?>(null) }
+    var nothingLeft by rememberSaveable { mutableStateOf(false) }
+    var page by rememberSaveable { mutableIntStateOf(PAGE_TERMINAL) }
     var advanced by rememberSaveable { mutableStateOf(false) }
     var window by rememberSaveable { mutableStateOf<String?>(null) }
     var focusMode by rememberSaveable { mutableStateOf(false) }
@@ -115,10 +129,96 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
     LaunchedEffect(controller) { controller.notices.collect { notice = it } }
     LaunchedEffect(notice) { if (notice.isNotBlank()) { kotlinx.coroutines.delay(5000); notice = "" } }
     fun navigate(index: Int) {
-        page = index
+        page = if (index == PAGE_ICEBREAKER) PAGE_LOOT else index
         archivePage = 0
         if (index == 8) window = "ramp"
         if (index == 9) window = "settings"
+        if (index == PAGE_ICEBREAKER) window = "icebreaker"
+    }
+    val sessionTick = if (live != null) rememberNow(1000) else 0L
+    val termCtx = TermContext(
+        connected = connected && status != null, demo = demo, deviceName = name, kindName = kind.displayName,
+        heating = status?.heaterMode?.isHeating == true, mode = status?.heaterMode.toTermMode(),
+        reached = status?.setpointReached == true, fahrenheit = status?.fahrenheit == true,
+        targetTenths = status?.targetTenths ?: 1850, effectiveTenths = status?.effectiveTargetTenths ?: status?.targetTenths ?: 1850,
+        minTenths = kind.minTarget, maxTenths = kind.maxTarget,
+        liveTenths = if (kind.liveTemperature) status?.currentTenths else null,
+        battery = if (kind.hasBattery) status?.battery else null, charging = status?.charging == true,
+        hasBoost = kind.hasBoost, hasPump = kind.hasPump, pumpOn = pump, rampRunning = ramp != null,
+        sessionStartMs = live?.startMs, puffs = live?.puffs, handle = night.handle,
+        lootCount = loot.size, secretsFound = secrets,
+    )
+    fun runCommand(line: String) {
+        val result = Terminal.run(line, termCtx)
+        app.night.appendFeed(listOf(TermLine("${prompt(night.handle)} $line", Tone.Echo)) + result.lines)
+        result.secret?.let(app.night::found)
+        termInput = ""
+        for (action in result.actions) when (action) {
+            is TermAction.SetTarget -> controller.setTarget(action.tenthsC)
+            is TermAction.Heater -> if (action.on) { if (status?.heaterMode?.isHeating != true) controller.setHeaterMode(HeaterMode.On) }
+                else controller.setHeaterMode(HeaterMode.Off)
+            is TermAction.Mode -> controller.setHeaterMode(when (action.mode) {
+                TermMode.Normal -> HeaterMode.On; TermMode.Boost -> HeaterMode.Boost; TermMode.Super -> HeaterMode.SuperBoost })
+            is TermAction.Pump -> controller.setPump(action.on)
+            TermAction.StopRamp -> controller.stopRamp()
+            TermAction.Connect -> when {
+                !permissions -> { app.night.appendFeed(listOf(TermLine("ERR bluetooth access needed. asking...", Tone.Err))); onGrant() }
+                !bluetoothOn -> { app.night.appendFeed(listOf(TermLine("ERR bluetooth is off. asking...", Tone.Err))); onEnableBluetooth() }
+                !controller.connectToLast() -> {
+                    app.night.appendFeed(listOf(TermLine("no saved device. scanning on the connection page.", Tone.Dim)))
+                    navigate(0); controller.startScan()
+                }
+            }
+            TermAction.Disconnect -> controller.disconnect()
+            is TermAction.Demo -> if (action.volcano) controller.startVolcanoDemo() else controller.startDemo()
+            TermAction.Find -> controller.findMyDevice()
+            is TermAction.Open -> when (action.target) {
+                "ramp" -> window = "ramp"
+                "settings" -> window = "settings"
+                "log" -> navigate(2)
+                "notes" -> navigate(4)
+                "atlas" -> navigate(3)
+                "loot" -> navigate(PAGE_LOOT)
+                "icebreaker" -> window = "icebreaker"
+            }
+            TermAction.Clear -> app.night.clearFeed()
+            is TermAction.SetHandle -> app.night.setPrefs(night.copy(handle = action.handle))
+            is TermAction.SetPhosphor -> Phosphor.parse(action.name)?.let { app.night.setPrefs(night.copy(phosphor = it)) }
+            is TermAction.Sound -> app.night.setPrefs(night.copy(modemSound = action.on))
+            TermAction.Lock -> saver = true
+        }
+    }
+    fun onGame(next: IcebreakerGame) {
+        if (game.state == BreakState.Running && next.state == BreakState.Cracked) {
+            val file = Loot.next(loot.map { it.first }.toSet())
+            nothingLeft = file == null
+            pulled = file?.id
+            if (file != null) {
+                app.night.pull(file.id)
+                app.night.appendFeed(listOf(TermLine("*** icebreaker: pulled ${file.name}", Tone.Irc)))
+                notice = "Pulled ${file.name}. Read it in loot."
+            } else notice = "Node cracked. No new files."
+        }
+        game = next
+    }
+    // The feed narrates device-confirmed changes, so a dragged slider doesn't flood it.
+    LaunchedEffect(controller) {
+        if (app.night.feed.value.isEmpty()) app.night.appendFeed(Terminal.motd(termCtx).map { TermLine(it, Tone.Info) })
+        kotlinx.coroutines.flow.combine(controller.connection, controller.reportedStatus, app.sessions.live, controller.pump) { c, s, l, p ->
+            feedSnapshot(c, s, l, p, controller.lastDeviceName ?: controller.kind.value.displayName)
+        }.collect { snap -> app.night.observe(snap) }
+    }
+    LaunchedEffect(controller) {
+        var previous: ConnectionState? = null
+        controller.connection.collect { c ->
+            if (c is ConnectionState.Connected && previous is ConnectionState.Connecting && app.night.prefs.value.modemSound) ModemSound.play()
+            previous = c
+        }
+    }
+    val idleOnTerminal = page == PAGE_TERMINAL && window == null && !advanced && night.screensaver
+    // Typing goes through the IME window, so the command line counts as activity too.
+    LaunchedEffect(idleOnTerminal, lastTouch, termInput) {
+        if (idleOnTerminal) { kotlinx.coroutines.delay(SCREENSAVER_AFTER_MS); saver = true }
     }
     val exportArchive = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch {
@@ -137,18 +237,29 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
             } catch (_: Exception) { notice = "Could not save the archive. Please choose another file." }
         }
     }
-    BackHandler(enabled = advanced || page != 0 || focusMode) {
-        when { advanced -> advanced = false; page != 0 -> page = 0; else -> focusMode = false }
+    BackHandler(enabled = saver || advanced || page != PAGE_TERMINAL || focusMode) {
+        when { saver -> saver = false; advanced -> advanced = false; page != PAGE_TERMINAL -> page = PAGE_TERMINAL; else -> focusMode = false }
     }
+    val reducedMotion = remember(context) {
+        android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    }
+    val termFont = remember { androidx.compose.ui.text.font.FontFamily(Font(R.font.vt323)) }
 
     MaterialTheme(colorScheme = darkColorScheme(primary = Caption, onPrimary = Color.Black,
         background = Color.Black, surface = Panel, onSurface = Color.White,
         onBackground = Color.White, secondary = Cyan, outline = Caption),
         shapes = Shapes(extraSmall = RoundedCornerShape(0.dp), small = RoundedCornerShape(0.dp), medium = RoundedCornerShape(0.dp),
             large = RoundedCornerShape(0.dp), extraLarge = RoundedCornerShape(0.dp))) {
-        Column(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding().padding(5.dp)
-            .border(1.dp, Color.Gray)) {
-            Row(Modifier.fillMaxWidth().background(Caption).heightIn(min = 48.dp).padding(start = 7.dp),
+      CompositionLocalProvider(LocalPhosphor provides night.phosphor, LocalTermFont provides termFont,
+          LocalReducedMotion provides reducedMotion) {
+       Box(Modifier.fillMaxSize().background(Night.Room).pointerInput(Unit) {
+           // Watch (never consume) touches so vapor.scr only appears after real idleness.
+           awaitPointerEventScope { while (true) { awaitPointerEvent(PointerEventPass.Initial); lastTouch = System.currentTimeMillis() } }
+       }) {
+        CrtGlass(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(5.dp)
+            .border(1.dp, Color(0xFF4A4E66))) {
+            Row(Modifier.fillMaxWidth().background(S7.CaptionBrush).heightIn(min = 48.dp).padding(start = 7.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 SilverSeven(Modifier.size(20.dp))
                 Text("SubVenty", color = Color.White, fontSize = 14.sp,
@@ -187,14 +298,26 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                     val stacked = maxWidth < 350.dp || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
                     Column(Modifier.fillMaxSize()) {
                         Row(Modifier.weight(1f).fillMaxWidth().padding(5.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            if (!stacked && !focusMode) NavigationTree(page, ::navigate,
+                            // The terminal wants the full width; the tree stays one tap away in the toolbar navigator.
+                            if (!stacked && !focusMode && page != PAGE_TERMINAL) NavigationTree(page, ::navigate,
                                 Modifier.width(116.dp).fillMaxHeight().border(1.dp, Color(0xFF34343D)))
                             Column(Modifier.weight(1f).fillMaxHeight()) {
                                 ClientWorkspace(page, Modifier.weight(1f)) {
+                                    if (page != PAGE_TERMINAL) {
                                     Label(listOf("device information", "temperature control", "session archive", "collection browser",
-                                        "field notes", "weekly postcard", "local options", "link monitor", "ramp manager", "device properties").getOrElse(page) { "device information" }, 13)
+                                        "field notes", "weekly postcard", "local options", "link monitor", "ramp manager", "device properties",
+                                        "terminal", "icebreaker", "loot").getOrElse(page) { "device information" }, 13)
                                     Label("${kind.displayName.lowercase()} / ${if (demo) "demo connection" else if (connected) "device connected" else "not connected"}", 10, Muted)
+                                    }
                                     when (page) {
+                                        PAGE_TERMINAL -> TerminalHome(
+                                            HomeState(termCtx, feed, live?.let { Terminal.clock(java.time.Duration.ofMillis(sessionTick - it.startMs)) },
+                                                live?.etaSeconds, loot.size),
+                                            HomeActions(onCommand = ::runCommand, onTargetDrag = { controller.setTarget(it) },
+                                                onTargetDone = { notice = "Target sent to device." }),
+                                            termInput, { termInput = it })
+                                        PAGE_LOOT -> LootListing(loot.mapNotNull { (id, at) -> Loot.byId(id)?.let { it to at } }, secrets,
+                                            onOpen = { window = "loot:${it.id}" }, onIcebreaker = { window = "icebreaker" })
                                         0 -> {
                                             Label(when (val c = connection) {
                                                 is ConnectionState.Connected -> if (c.demo) "Demo device connected." else "Your device is connected."
@@ -272,7 +395,7 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                             Label("temperature atlas")
                                             if (bands.isEmpty()) Label("No reached temperature bands yet. A band is recorded only after the device reports reached.", 12, Muted)
                                             bands.chunked(3).forEach { row -> Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { row.forEach { band ->
-                                                Box(Modifier.background(Caption).padding(6.dp)) { Label("${Temperature.toDisplay(band * 10, status?.fahrenheit == true)}°$unit", 11, Color.Black) }
+                                                Box(Modifier.background(Caption).padding(6.dp)) { Label("${Temperature.toDisplay(band * 10, status?.fahrenheit == true)}°$unit", 11, Color.White) }
                                             } } }
                                             Label("A map with no finish line. Bands never expire.", 11, Muted)
                                             Label("ember trail")
@@ -301,7 +424,16 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                                 app.collections.setPaused(value)
                                             }
                                             Label(if (paused) "Collection paused. Your archive stays. Resume will wait until the heater is off; no backfill." else "Pause new automatic session and battery logs. Existing stamps, beads and notes stay.", 11, Muted)
-                                            InfoLine("sound", "off")
+                                            S7Group("terminal") {
+                                                FlatButton("phosphor: ${night.phosphor.label}", {
+                                                    app.night.setPrefs(night.copy(phosphor = Phosphor.entries[(night.phosphor.ordinal + 1) % Phosphor.entries.size]))
+                                                })
+                                                S7Check("modem sound on connect", night.modemSound) { app.night.setPrefs(night.copy(modemSound = it)) }
+                                                S7Check("vapor.scr screensaver when idle", night.screensaver) { app.night.setPrefs(night.copy(screensaver = it)) }
+                                                Label("handle: ${night.handle} / change it at the prompt with handle <name>", 11, Muted)
+                                                FlatButton("forget loot and found commands", { app.night.clearGame(); notice = "Loot cleared. Your archive is untouched." })
+                                            }
+                                            InfoLine("sound", if (night.modemSound) "modem only" else "off")
                                             InfoLine("reminders", "none")
                                             InfoLine("storage", "local")
                                             FlatButton("client options…", { window = "client" })
@@ -338,24 +470,25 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                         FlatButton("older entries", { archivePage = safePage + 1 }, enabled = safePage < lastPage)
                                     }
                                 }
-                                FlatButton(if (page == 0) "temperature controls »" else "« device information", { page = if (page == 0) 1 else 0 }, Modifier.fillMaxWidth())
+                                if (page != PAGE_TERMINAL) FlatButton("« terminal", { page = PAGE_TERMINAL }, Modifier.fillMaxWidth())
                             }
                         }
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().background(Panel).semantics { liveRegion = LiveRegionMode.Polite }.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                Box(Modifier.border(1.dp, S7.Border).padding(4.dp)) { Label(if (demo) "demo" else if (connected) "online" else "idle", 10) }
-                Box(Modifier.border(1.dp, S7.Border).padding(4.dp)) { Label("0.4.0", 10) }
-                Box(Modifier.weight(1f).border(1.dp, S7.Border).padding(4.dp)) { Label(notice.ifBlank { heaterLabel(status, connected) }, 10) }
-            }
+            Taskbar(notice.ifBlank { heaterLabel(status, connected) }, if (demo) "demo" else if (connected) "online" else "idle",
+                if (kind.hasBattery && enabled) status!!.battery else null, status?.charging == true, onTask = { advanced = false; page = PAGE_TERMINAL })
         }
+        }
+        if (saver) VaporScreensaver(termCtx, onWake = { saver = false; lastTouch = System.currentTimeMillis() })
+       }
         when (window) {
             "about" -> UtilityWindow("about SubVenty", { window = null }) {
                 SilverSeven(Modifier.fillMaxWidth().height(115.dp))
-                Label("SubVenty ${AppUpdater.currentVersion(context)}", 16)
-                Label("Personal thermal control. A native companion for Venty and Volcano Hybrid.")
-                Label("Interface study after the SubSeven client. Your archive and notes remain on this phone.", 11, Muted)
+                Label("SubVenty ${AppUpdater.currentVersion(context)} // after hours", 16)
+                Label("Personal thermal control for Venty and Volcano Hybrid, dressed as a remote-admin client on a CRT at midnight.")
+                Label("Interface study after the SubSeven client. ICEBREAKER, the loot files and the terminal are cosmetic: they never read or reward your sessions. Your archive and notes remain on this phone.", 11, Muted)
+                Label("VT323 terminal face: SIL Open Font License.", 11, Muted)
                 FlatButton("OK", { window = null })
             }
             "navigation" -> UtilityWindow("navigator", { window = null }) {
@@ -374,13 +507,24 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                 } ?: Label("This entry is no longer available.")
                 FlatButton("cancel", { window = null })
             }
+            "icebreaker" -> UtilityWindow("icebreaker.exe", { window = null }) {
+                IcebreakerBody(game, ::onGame, pulled?.let(Loot::byId), nothingLeft,
+                    onRead = { window = "loot:${it.id}" }, onNewNode = { game = IcebreakerGame.new(); pulled = null; nothingLeft = false })
+            }
             "close" -> UtilityWindow("close client", { window = null }) {
                 Label("Close the application window?")
                 Label("Heating and active ramps continue in the background. Use heater off in the control panel to stop heating.", 11, Muted)
                 FlatButton("close app window", { activity?.finish() })
                 FlatButton("keep open", { window = null })
             }
+            else -> window?.takeIf { it.startsWith("loot:") }?.let { Loot.byId(it.removePrefix("loot:")) }?.let { file ->
+                UtilityWindow(file.name, { window = null }) {
+                    LootReader(file)
+                    FlatButton("close", { window = null })
+                }
+            }
         }
+      }
     }
 }
 
@@ -450,3 +594,33 @@ private fun android.content.Context.findActivity(): android.app.Activity? = when
     is android.content.ContextWrapper -> baseContext.findActivity()
     else -> null
 }
+
+private const val SCREENSAVER_AFTER_MS = 120_000L
+
+private fun HeaterMode?.toTermMode(): TermMode = when (this) {
+    HeaterMode.Boost -> TermMode.Boost
+    HeaterMode.SuperBoost -> TermMode.Super
+    else -> TermMode.Normal
+}
+
+private fun feedSnapshot(c: ConnectionState, s: VentyStatus?, live: io.github.orth4x0r.venty.session.LiveSession?, pump: Boolean,
+    fallbackName: String): FeedSnapshot {
+    val (link, name, detail) = when (c) {
+        is ConnectionState.Idle -> Triple("idle", fallbackName, null)
+        is ConnectionState.Scanning -> Triple("scanning", fallbackName, null)
+        is ConnectionState.Connecting -> Triple("connecting", c.name, null)
+        is ConnectionState.Connected -> Triple("connected", c.name, null)
+        is ConnectionState.Reconnecting -> Triple("reconnecting", c.name, "attempt ${c.attempt}")
+        is ConnectionState.Failed -> Triple("failed", fallbackName, c.message)
+    }
+    return FeedSnapshot(link, name, demo = (c as? ConnectionState.Connected)?.demo == true, detail = detail,
+        heating = s?.heaterMode?.isHeating == true, mode = s?.heaterMode.toTermMode(), reached = s?.setpointReached == true,
+        targetTenths = s?.targetTenths, effectiveTenths = s?.effectiveTargetTenths, fahrenheit = s?.fahrenheit == true,
+        battery = s?.battery, charging = s?.charging == true, puffs = live?.puffs ?: 0, pump = pump)
+}
+
+/** Saves an ICEBREAKER run across rotation: secret, node, draft and guesses (probes are recomputed). */
+private val IcebreakerSaver = androidx.compose.runtime.saveable.listSaver<IcebreakerGame, String>(
+    save = { listOf(it.secret, it.node, it.draft) + it.attempts.map { a -> a.guess } },
+    restore = { l -> IcebreakerGame(l[0], l[1], l.drop(3).map { g -> Attempt(g, IcebreakerGame.probe(l[0], g)) }, l[2]) },
+)

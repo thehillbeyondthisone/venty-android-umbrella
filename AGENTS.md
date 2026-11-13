@@ -32,3 +32,4 @@ When unsure, start one tier lower and escalate if the agent struggles.
 - Builds and tests run on the owner's PC (Android Studio), not in CI.
 - GitHub Actions is manual-only (`workflow_dispatch`) to avoid cost. Do not add push or PR triggers, and do not start workflow runs unless the owner asks.
 - Cloud containers usually can't reach Google Maven, so Gradle builds there are expected to fail.
+- `./gradlew -p tools/night-preview test run` works from Maven Central alone. It compiles the pure-Compose SubVenty terminal files against Compose for Desktop, runs their JVM tests and renders review PNGs to `tools/night-preview/out`. Keep those files free of Android types so this keeps working. Maven Central sometimes returns 429; wait and retry.

@@ -4,6 +4,12 @@ A native Android companion for the Storz & Bickel Venty and Volcano Hybrid, with
 
 This branch contains the **native Android app**, plus the earlier browser design studies. The Android interface is Kotlin/Jetpack Compose, not a WebView.
 
+## Next: after hours (iteration 3, source only)
+
+<p align="center"><img src="docs/native-preview/iteration3/02-home-warming.png" alt="SubVenty terminal while warming in boost" width="30%"> <img src="docs/native-preview/iteration3/05-icebreaker.png" alt="ICEBREAKER" width="30%"> <img src="docs/native-preview/iteration3/09-vapor-scr.png" alt="vapor.scr screensaver" width="30%"></p>
+
+The client now runs on a CRT at midnight. It has a phosphor terminal home with real controls and a command line, dial-up and IRC-style event narration, a taskbar with a clock and moon phase, and a `vapor.scr` nightstand screensaver. **ICEBREAKER**, an untimed code-cracking puzzle, pulls lore files from a fictional 1999 BBS. The game layer never reads or rewards sessions, and sound is off by default. This iteration is **not built yet**: install preview 2 below until preview 3 is published. Details, renders and verification are in the [iteration 3 notes](docs/native-preview/iteration3/README.md).
+
 ## Try the Android app
 
 1. On your Android phone, [download SubVenty preview 2](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview2/subventy-0.4.0-preview2.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.

@@ -26,6 +26,8 @@ class VentyApp : Application() {
     val controller: VentyController by lazy { VentyController(this) }
     val prefs: PrefsStore by lazy { PrefsStore(this) }
     val collections by lazy { io.github.orth4x0r.venty.collections.CollectionStore(this) }
+    /** Cosmetic after-hours terminal state: handle, phosphor, loot. Never touches sessions. */
+    val night by lazy { io.github.orth4x0r.venty.ui.subventy.NightStore(this) }
     val sessions: SessionTracker by lazy { SessionTracker(this) }
     val battery: BatteryLog by lazy { BatteryLog(this) }
 
