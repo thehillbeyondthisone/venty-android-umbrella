@@ -1,0 +1,59 @@
+.library-title { font-size: 28px; letter-spacing: -1px; font-weight: 500; margin: 19px 0 7px; }
+.library-sub { font-size: 11px; line-height: 1.6; color: var(--muted); margin: 0 0 16px; }
+.field .library-title { font-family: Georgia, serif; font-size: 30px; }
+.signal .library-title { font: 500 34px Barlow, sans-serif; letter-spacing: .5px; text-transform: uppercase; }
+.collection-picker { display: flex; gap: 4px; margin: 15px 0; }
+.collection-picker button { flex: 1; border: 1px solid var(--line); background: transparent; border-radius: 7px; font-size: 10px; padding: 4px; }
+.collection-picker button[aria-pressed=true] { background: var(--tint); border-color: var(--accent); color: var(--accent); }
+.poster { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 15px; }
+.poster-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; font-size: 10px; }
+.poster-head span { font-size: 9px; color: var(--muted); }
+.atlas-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 8px 5px; margin: 18px 0; }
+.band { min-width: 0; height: 25px; display: grid; place-items: center; color: var(--muted); font-size: 9px; border: 1px dotted var(--line); border-radius: 50%; }
+.band.stamped { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.poster p { margin: 8px 0 0; font-size: 10px; color: var(--muted); line-height: 1.6; }
+.field .poster { border-radius: 3px; }
+.field .band { border-radius: 3px; }
+.signal .poster { border-radius: 5px; }
+.signal .band { border-radius: 3px; font-family: monospace; }
+.trail { width: 100%; height: 168px; }
+.trail line { stroke: var(--muted); opacity: .4; stroke-width: .8; }
+.trail circle { fill: var(--accent); stroke: var(--surface); stroke-width: 3px; }
+.trail circle:nth-of-type(3n) { opacity: .55; }
+.journal { display: grid; gap: 11px; max-height: 170px; overflow: auto; margin-bottom: 14px; }
+.journal blockquote { margin: 0; padding-left: 10px; border-left: 2px solid var(--line); font: 14px/1.4 Georgia, serif; overflow-wrap: anywhere; }
+.journal cite { display: block; margin-top: 5px; font: normal 9px Arial,sans-serif; color: var(--muted); }
+.note-editor label { display: block; font-size: 10px; color: var(--muted); margin: 5px 0; }
+.note-editor input, .comparison-note { width: 100%; min-width: 0; min-height: 44px; padding: 9px; border: 1px solid var(--line); border-radius: 5px; color: var(--ink); background: var(--bg); font-size: 11px; }
+.note-editor .primary { margin-top: 8px; min-height: 44px; font-size: 11px; }
+.collection-settings { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 12px; }
+.pause-label { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 11px; }
+.pause-label input { accent-color: var(--accent); width: 18px; height: 18px; }
+.pause-help { font-size: 10px; line-height: 1.55; color: var(--muted); margin: 0; }
+.discoveries { margin-top: 15px; }
+.discoveries summary { cursor: pointer; font-size: 10px; min-height: 44px; padding-top: 12px; }
+.discoveries ul { padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 7px; margin: 0; }
+.discoveries li { font-size: 9px; padding: 7px; border: 1px solid var(--line); border-radius: 5px; }
+.discovery-copy { margin: 12px 0; font-size: 10px; line-height: 1.5; color: var(--muted); }
+.ritual-card { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 13px 0; background: var(--surface); }
+.field .ritual-card { border-radius: 3px; }
+.signal .ritual-card { border-radius: 5px; }
+.ritual-card h5 { margin: 8px 0; font-size: 17px; font-weight: 500; }
+.field .ritual-card h5 { font-family: Georgia,serif; }
+.ritual-card p { margin: 0 0 10px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.comparison-row { display: flex; align-items: center; gap: 6px; padding: 8px 0; border-top: 1px solid var(--line); }
+.comparison-row label { display: flex; align-items: center; margin-right: auto; font-size: 10px; }
+.comparison-row input { width: 53px; min-height: 44px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 5px; font-size: 12px; }
+.rating { min-width: 37px; border: 1px solid var(--line); border-radius: 5px; background: transparent; font-size: 17px; }
+.rating[aria-pressed=true] { background: var(--tint); border-color: var(--accent); }
+.third-temp { border: 0; color: var(--muted); background: transparent; font-size: 10px; text-decoration: underline; }
+.postcard { position: relative; touch-action: pan-y; }
+.postcard-field { height: 48px; border-radius: 4px; background: var(--tint); display: flex; gap: 4px; padding: 7px; margin: 10px 0; }
+.postcard-field i { display: block; background: var(--accent); opacity: .45; flex: 1; border-radius: 2px; }
+.postcard-field i:nth-child(2n) { opacity: .2; }
+.dismiss-postcard { position: absolute; right: 5px; top: 3px; width: 44px; border: 0; background: transparent; color: var(--muted); font-size: 20px; }
+.postcard h5 { padding-right: 22px; }
+.postcard-empty { font-size: 11px; line-height: 1.6; padding: 20px 0; color: var(--muted); }
+.reset-postcard { border: 0; background: transparent; color: var(--muted); font-size: 10px; text-decoration: underline; }
+.palette-note { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--muted); line-height: 1.5; margin: 15px 0; }
+.palette-note i { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); display: block; flex-shrink: 0; }

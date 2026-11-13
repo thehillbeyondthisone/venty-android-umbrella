@@ -1,136 +1,67 @@
-<p align="center">
-  <img src="docs/images/banner.svg" alt="venty-android: a native Android app for the Storz &amp; Bickel Venty and Volcano Hybrid" width="100%">
-</p>
+# SubVenty
 
-<p align="center">
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin&logoColor=white">
-  <img alt="Jetpack Compose" src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white">
-  <img alt="Android 8.0+" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white">
-  <img alt="Bluetooth LE" src="https://img.shields.io/badge/Bluetooth-LE-0082FC?logo=bluetooth&logoColor=white">
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-FF7A3D"></a>
-  <a href="https://github.com/orth4x0r/venty-android/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/orth4x0r/venty-android?color=FF7A3D&label=download"></a>
-</p>
+A native Android companion for the Storz & Bickel Venty and Volcano Hybrid, with the visual language of the SubSeven clients. Built on [orth4x0r/venty-android](https://github.com/orth4x0r/venty-android).
 
-<p align="center">
-  <b>The Storz &amp; Bickel app is a Web Bluetooth page. This is a real one.</b><br>
-  Kotlin, Jetpack Compose, a proper BLE stack, and an unreasonable amount of fire.
-</p>
+This branch contains the **native Android app**, plus the earlier browser design studies. The Android interface is Kotlin/Jetpack Compose, not a WebView.
 
----
+## Try the Android app
 
-## Screenshots
+1. On your Android phone, [download SubVenty preview 2](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview2/subventy-0.4.0-preview2.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
+2. Open the downloaded APK. Android may ask you to allow installs from the browser or Files app you used.
+3. Launch **SubVenty**. Try **Demo Venty** or **Demo Volcano** first. Demo entries are labeled and stored separately from hardware entries.
+4. For a real device, allow Nearby devices/Bluetooth access, enable Bluetooth, select **Scan for devices**, then select your Venty or Volcano.
 
-All captured in the built-in demo mode, no device needed.
+The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview2) contains the APK and checksum. The binary is kept off the implementation branch. GitHub rejected release-asset uploads for the current integration, so this branch supplies the download.
 
-### Venty
+Preview 2 is version **0.4.0-subventy.2** (code 10). It uses the same application ID and signing certificate as preview 1: install it as an update to retain your local archive and preferences. You do not need to uninstall first.
 
-<table>
-  <tr>
-    <td align="center" width="25%"><img src="docs/images/screens/venty-heating.jpg" alt="Heating up"><br><sub>Heating up</sub></td>
-    <td align="center" width="25%"><img src="docs/images/screens/venty-ready.jpg" alt="Ready at temperature"><br><sub>Ready at temperature</sub></td>
-    <td align="center" width="25%"><img src="docs/images/screens/venty-superboost.jpg" alt="Superboost"><br><sub>Superboost</sub></td>
-    <td align="center" width="25%"><img src="docs/images/screens/venty-controls.jpg" alt="Boost modes and offsets"><br><sub>Boost modes and offsets</sub></td>
-  </tr>
-</table>
+Android 8.0+ is required. This preview uses a separate application ID (`io.github.thehillbeyondthisone.subventy`), so it can coexist with the upstream Venty app. Close/disconnect the other controller before connecting SubVenty to the same physical device.
 
-### Volcano Hybrid
+You do **not** need to merge the PR, install Android Studio, or build anything yourself to install the APK. On GitHub, HTML files show their source; they do not launch the native app.
 
-<table>
-  <tr>
-    <td align="center" width="33%"><img src="docs/images/screens/volcano-heating.jpg" alt="Heating with a live temperature"><br><sub>Heating with a live temperature</sub></td>
-    <td align="center" width="33%"><img src="docs/images/screens/volcano-ready.jpg" alt="Ready"><br><sub>Ready</sub></td>
-    <td align="center" width="33%"><img src="docs/images/screens/volcano-pump.jpg" alt="Filling the balloon"><br><sub>Filling the balloon</sub></td>
-  </tr>
-</table>
+## Included in preview 2
 
-### Sessions and settings
+- Lavender caption strip, blue connection row and icon toolbar, expandable tree navigation, charcoal workspace, embossed S7 badge, silver pixel-edged seven and segmented status strip. The layout follows the newer user-supplied SubSeven/Legacy references; the earlier 1999 browser reconstruction remains available separately.
+- Matching square utility windows for ramps, device properties, Find My, note editing, client options, navigation and About. The title-bar controls minimize the app, expand the workspace and close the client window.
+- Native permission, scan, connect, reconnect and disconnect flows using the existing BLE controller.
+- Device-confirmed target/readiness, Venty battery, and Volcano live temperature.
+- Heater, bounded temperature adjustments, presets, Venty normal/Boost/Superboost, and Volcano pump.
+- Themed ramp editor with validated drafts, saved plan and profile loading. Loading/saving a plan leaves heating unchanged; **start ramp and heater** is a separate explicit action.
+- Themed device properties for temperature units, boost offsets, eco settings, brightness, vibration and boost timeout where supported. Find My provides Bluetooth signal readings and the existing vibration/flash command. A link monitor displays actual controller events.
+- Searchable session and note archives, a dedicated note editor, and JSON export through Android's save-file picker. Export includes all devices, demo records and notes. Import is not implemented.
+- **Legacy controls** retains the original advanced dashboard for additional tools and settings. That panel keeps its earlier styling.
+- Permanent, local per-device collection archive: reached 5 °C Atlas bands, an Ember Trail, editable one-line notes, and a dismissible weekly postcard.
+- **Do not track** pauses new session and battery logs while preserving existing notes/stamps/beads. Resume does not backfill a paused period; a hot session interrupted by a pause is excluded. Device controls continue working. On a new connection, recording waits for an observed heater-off state.
+- Demo sessions have separate archive identities. No synthetic example collections are preloaded into the native app.
 
-<table>
-  <tr>
-    <td align="center" width="33%"><img src="docs/images/screens/session-done.jpg" alt="Session done, cooling down"><br><sub>Session done, cooling down</sub></td>
-    <td align="center" width="33%"><img src="docs/images/screens/history.jpg" alt="History"><br><sub>History</sub></td>
-    <td align="center" width="33%"><img src="docs/images/screens/settings.jpg" alt="Settings"><br><sub>Settings</sub></td>
-  </tr>
-</table>
+Atlas stamps use **device-reported reached targets**, not optimistic slider edits. Venty does not report live temperature, so the interface never presents a simulated measurement as a real one. Existing collection records survive the rolling 500-entry recent-session history limit. Notes and collections persist across app restarts; clearing Android app data/uninstalling deletes this local data.
 
-## Features
+## Scope and validation
 
-**Devices**
+This is a native test APK. Compilation, **116 unit tests**, and Android lint pass locally. Android 15 emulator checks cover installation/update, demo connection, target adjustment, heater controls, toolbar/tree navigation, utility windows, workspace expansion and archive export. Screenshots and detailed results are in [the preview 2 notes](docs/native-preview/iteration2/README.md). Physical Bluetooth, manufacturer-specific firmware behavior, watch integration and real-phone ergonomics still need device testing.
 
-- 🔥 **Venty**: target temperature, heater on/off, Boost and Superboost with their own offsets, battery and charging state
-- 🌋 **Volcano Hybrid**: live temperature on a 40–230 °C dial and a pump button that streams air into the balloon
-- 🧪 **Demo mode** for both, so you can poke at everything without a device in hand
+The APK is debug-signed for personal testing. Keep the signing key for future compatible updates; do not publish it in the repository. The in-app updater points to **this fork**, not the upstream release feed. Draft/prerelease builds are installed manually.
 
-**Control**
+Passive achievements, Dial-in comparisons, calendar palettes, optional user-chosen chimes, and easter eggs remain in the [design brief](docs/design-exploration/README.md); they are not implemented in this preview. There are no new push reminders, streaks, rankings, or consumption goals.
 
-- Big draggable temperature dial with magnetic presets
-- Normal / Boost / Super selector that shows where each mode will land
-- Ramp profiles that step the temperature up through a session on their own
-- Find my device with a radar that shows how close you are (signal strength), plus °C / °F, brightness, vibration, eco charging and boost timeout
-- Auto-reconnect with backoff, and a foreground service that keeps the link alive in the background
-- Battery care: with the app in the background and the heater off, it polls slowly and lets go of the Venty after 5 minutes (adjustable in Settings, or "Never") so it can sleep. Opening the app reconnects
-- "Connect when it turns on" (Android 12+): Android wakes the app when your device starts advertising, even after you swipe it away. Not after **Force stop**, though: Android keeps a force-stopped app asleep until you open it again, so swipe it away instead
+## Build locally (optional)
 
-**Sessions**
-
-- Puff detection with a puff timer ring, a session tracker, session stats and a session-done card with a cool-down ring
-- History with growing chart bars, battery stats and a battery forecast
-- A monthly "Wrapped" story of your sessions
-- "At temperature" notification, a Live Update heat-up notification on Android 16, a home-screen widget and a Quick Settings heater tile
-- ⌚ A Wear OS tile to check and control the heater from your watch
-
-**Flair**
-
-- A shader heat aura that glows hotter as it heats up, with heat-up haptics
-- Accent colour matched to your device's colour, or pick your own
-- An ignition splash, rising embers, a rotating corona that speeds up in boost and a lava effect for Superboost
-- A heat shockwave and ready flash when you hit temperature, slot-machine digits, a liquid charging fill
-- A scan radar with signal bars, glassy cards, predictive back and Material You wallpaper colours
-- Respects the system "remove animations" setting
-
-## Install
-
-There's no Play Store listing. Grab the APK from the [latest release](https://github.com/orth4x0r/venty-android/releases/latest) (`venty-v….apk` for the phone, `venty-wear-v….apk` for a Wear OS watch) and install it. It's signed with a debug key, so allow installs from unknown sources.
-
-Or build it yourself:
+Use Android Studio with Android SDK 36 and JDK 17:
 
 ```sh
-git clone https://github.com/orth4x0r/venty-android
-cd venty-android
-./gradlew assembleRelease   # or open the folder in Android Studio
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-The APK lands in `app/build/outputs/apk/release/app-release.apk`. You need the Android SDK (Android Studio bundles it).
+The APK is `app/build/outputs/apk/debug/app-debug.apk`. The existing GitHub Actions workflow remains manual-only; no workflow runs are required for this preview.
 
-## How it talks to the device
+## Design references
 
-The Venty speaks a small packet protocol over a single BLE characteristic, and the app polls it every 500 ms. The Volcano Hybrid exposes one characteristic per value instead, so `VolcanoLink` translates the Venty packets into Volcano reads and writes and everything above it (sessions, notification, widget) works unchanged. The full protocol, including what's been confirmed on real hardware, is in [docs/PROTOCOL.md](docs/PROTOCOL.md).
+- [SubVenty source references](docs/design-exploration/subventy/SOURCES.md): original screenshots, historical Delphi form geometry, colours, and fidelity notes.
+- [Interactive browser reconstruction](docs/design-exploration/subventy/index.html).
+- [Earlier handwritten/cassette/sculptural studies](docs/design-exploration/style-studies.html).
+- [Collection mechanics and plan](docs/design-exploration/README.md).
+- [BLE protocol reference](docs/PROTOCOL.md).
 
-Tested on a real Venty: boost and superboost work, temperatures cap at 210 °C, and the Venty reports no live temperature (the app shows the target and whether it's still heating).
+## Credits and license
 
-<details>
-<summary><b>Code map</b></summary>
-
-- `ble/VentyProtocol.kt`: packet encoding and decoding, unit tested in `app/src/test`
-- `ble/GattLink.kt`: the BLE connection with a serial GATT operation queue
-- `ble/VolcanoProtocol.kt`, `ble/VolcanoLink.kt`, `ble/GattVolcanoLink.kt`: Volcano Hybrid support
-- `ble/DemoLink.kt`, `ble/DemoVolcanoLink.kt`: simulated devices speaking the same packets
-- `ble/DeviceKind.kt`: what each device can do, which decides what the UI shows
-- `ble/VentyController.kt`: scanning, the 500 ms poll, reconnect with backoff, commands
-- `session/`: puff detection and session tracking
-- `service/`, `widget/`: the foreground service, notification and home-screen widget
-- `ui/`: Compose screens (connect, dashboard and dial, history, settings) and the effects
-
-</details>
-
-## Not supported
-
-The Mighty+ has no Bluetooth, so it can't be supported. Other Storz &amp; Bickel devices (Crafty+, Veazy) aren't implemented.
-
-## Credits
-
-Protocol details come from the official web app's JavaScript and from [szv99/storz-bickel-ble](https://github.com/szv99/storz-bickel-ble), [lorek123/snb-ble](https://github.com/lorek123/snb-ble) and [firsttris/reactive-volcano-app](https://github.com/firsttris/reactive-volcano-app) (ideas and protocol notes only, no code).
-
-## License
-
-[MIT](LICENSE). Not affiliated with or endorsed by Storz &amp; Bickel. Venty and Volcano Hybrid are their trademarks. Use at your own risk; it's your hardware.
+The original Venty/Volcano controller, services, session tools and advanced interface are from [orth4x0r/venty-android](https://github.com/orth4x0r/venty-android), under the [MIT license](LICENSE). The SubVenty UI is an independent implementation of the referenced historical visual design; no SubSeven runtime is included. Not affiliated with Storz & Bickel. Device names are their trademarks.

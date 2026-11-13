@@ -170,7 +170,7 @@ fun WrappedScreen(
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                 Text(
-                    month.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) + " " + month.year,
+                    month.month.getDisplayName(TextStyle.FULL, androidx.compose.ui.platform.LocalConfiguration.current.locales[0]) + " " + month.year,
                     style = MaterialTheme.typography.labelLarge,
                     color = VentyColors.OnSurface.copy(alpha = 0.8f),
                     modifier = Modifier.weight(1f).padding(start = 4.dp),
@@ -209,7 +209,7 @@ private fun CardContent(
     onMonth: (YearMonth) -> Unit,
 ) {
     val tint = card.tint()
-    val monthName = w.month.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
+    val monthName = w.month.month.getDisplayName(TextStyle.FULL, androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
     when (card) {
         Card.Intro -> Story(kicker = "${w.month.year}", big = null, title = "$monthName in numbers", body = "Tap for the next one, hold to pause.", tint = tint) {
             MonthDots(history, w.month, tint)
@@ -258,7 +258,7 @@ private fun CardContent(
             kicker = "Mostly in the",
             big = null,
             title = w.favoriteTimeOfDay.label.lowercase(),
-            body = "Busiest day: " + w.busiestDay.getDisplayName(TextStyle.FULL, Locale.getDefault()) + ".",
+            body = "Busiest day: " + w.busiestDay.getDisplayName(TextStyle.FULL, androidx.compose.ui.platform.LocalConfiguration.current.locales[0]) + ".",
             tint = tint,
         ) {
             WeekdayBars(w.perWeekday, tint)
@@ -288,7 +288,7 @@ private fun CardContent(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     months.filter { it != w.month }.take(4).forEach { m ->
                         Text(
-                            m.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                            m.month.getDisplayName(TextStyle.SHORT, androidx.compose.ui.platform.LocalConfiguration.current.locales[0]),
                             style = MaterialTheme.typography.labelLarge,
                             modifier = Modifier
                                 .clip(VentyShapes.Small)
