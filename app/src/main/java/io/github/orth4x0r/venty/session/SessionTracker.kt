@@ -25,6 +25,8 @@ data class SessionRecord(
     val avgTargetTenths: Int = 0,
     val longestDrawMs: Long = 0L,
     val totalDrawMs: Long = 0L,
+    val reachedBands: List<Int> = emptyList(),
+    val deviceKey: String = "legacy",
 ) {
     val durationMs: Long get() = (endMs - startMs).coerceAtLeast(0L)
 }
@@ -82,6 +84,9 @@ class SessionTracker(context: Context) {
     private val lock = Any()
     private val writeLock = Any()
     private val detector = PuffDetector()
+    private val tracking = SessionTrackingGate()
+    private val reachedBands = linkedSetOf<Int>()
+    private var deviceKey = "legacy"
 
     private val _live = MutableStateFlow<LiveSession?>(null)
     val live: StateFlow<LiveSession?> = _live.asStateFlow()
@@ -114,10 +119,24 @@ class SessionTracker(context: Context) {
         load()
     }
 
-    fun onStatus(s: VentyStatus, nowMs: Long = System.currentTimeMillis()) {
+    fun setTrackingPaused(paused: Boolean) {
+        synchronized(lock) {
+            tracking.setPaused(paused)
+            if (paused) {
+                active = false
+                puffing = false
+                _live.value = null
+                detector.reset()
+                reachedBands.clear()
+            }
+        }
+    }
+
+    fun onStatus(s: VentyStatus, nowMs: Long = System.currentTimeMillis(), device: String = "legacy") {
         var save = false
         synchronized(lock) {
             val heating = s.heaterMode.isHeating
+            if (!tracking.allows(heating)) return@synchronized
             if (!heating) {
                 if (active) {
                     endSession(nowMs)
@@ -129,6 +148,8 @@ class SessionTracker(context: Context) {
             }
             if (!active) {
                 active = true
+                reachedBands.clear()
+                deviceKey = device
                 startedFromOff = seenAny
                 startMs = nowMs
                 puffs = 0
@@ -143,6 +164,7 @@ class SessionTracker(context: Context) {
                 detector.reset()
             }
             seenAny = true
+            if (s.setpointReached) reachedBands += (s.effectiveTargetTenths / 50) * 5
             maxTarget = maxOf(maxTarget, s.effectiveTargetTenths)
             stats.onTarget(s.effectiveTargetTenths, nowMs)
             if (s.heaterMode == HeaterMode.Boost || s.heaterMode == HeaterMode.SuperBoost) boosted = true
@@ -183,6 +205,7 @@ class SessionTracker(context: Context) {
                 save = true
             }
             detector.reset()
+            tracking.resetConnection()
             seenAny = false
         }
         if (save) save()
@@ -206,7 +229,7 @@ class SessionTracker(context: Context) {
         if (nowMs - startMs >= MIN_SESSION_MS) {
             val record = SessionRecord(
                 startMs, nowMs, puffs, heatUpSeconds, maxTarget, boosted,
-                stats.avgTargetTenths(), stats.longestDrawMs, stats.totalDrawMs,
+                stats.avgTargetTenths(), stats.longestDrawMs, stats.totalDrawMs, reachedBands.toList(), deviceKey,
             )
             _history.value = (listOf(record) + _history.value).take(MAX_HISTORY)
             rates = _history.value.mapNotNull { heatUpRate(it) }
@@ -236,7 +259,8 @@ class SessionTracker(context: Context) {
                             .put("boosted", r.boosted)
                             .put("avgTarget", r.avgTargetTenths)
                             .put("longestDraw", r.longestDrawMs)
-                            .put("totalDraw", r.totalDrawMs),
+                            .put("totalDraw", r.totalDrawMs)
+                            .put("reachedBands", JSONArray(r.reachedBands)).put("device", r.deviceKey),
                     )
                 }
                 val json = JSONObject().put("lifetimePuffs", lifetime).put("sessions", arr).toString()
@@ -274,6 +298,8 @@ class SessionTracker(context: Context) {
                     avgTargetTenths = o.optInt("avgTarget", 0),
                     longestDrawMs = o.optLong("longestDraw", 0L),
                     totalDrawMs = o.optLong("totalDraw", 0L),
+                    reachedBands = o.optJSONArray("reachedBands")?.let { a -> List(a.length()) { a.getInt(it) } }.orEmpty(),
+                    deviceKey = o.optString("device", "legacy"),
                 )
             }
             val sorted = list.sortedByDescending { it.startMs }.take(MAX_HISTORY)

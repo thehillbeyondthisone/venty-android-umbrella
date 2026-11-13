@@ -1,5 +1,7 @@
 # SubVenty: original SubSeven interface study
 
+The [native Android implementation](../../../README.md) is now available. This document describes the browser reference and its source research.
+
 [Open the reconstruction](index.html). Serve the repository root with `python3 -m http.server 8765`, then open `http://localhost:8765/docs/design-exploration/subventy/`.
 
 ![SubVenty desktop and Android interface](subventy.png)

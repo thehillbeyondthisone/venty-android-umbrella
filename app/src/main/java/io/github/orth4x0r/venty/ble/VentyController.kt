@@ -111,6 +111,10 @@ class VentyController(context: Context) {
     private val _status = MutableStateFlow<VentyStatus?>(null)
     val status: StateFlow<VentyStatus?> = _status.asStateFlow()
 
+    // Device-confirmed values for session/collection records, excluding optimistic UI edits.
+    private val _reportedStatus = MutableStateFlow<VentyStatus?>(null)
+    val reportedStatus: StateFlow<VentyStatus?> = _reportedStatus.asStateFlow()
+
     /** One-off messages for the user, e.g. when the Venty refuses a mode change. */
     private val _notices = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val notices: SharedFlow<String> = _notices.asSharedFlow()
@@ -364,6 +368,7 @@ class VentyController(context: Context) {
         link = null
         deviceStatus = null
         _status.value = null
+        _reportedStatus.value = null
         _info.value = DeviceInfo()
         _deviceSettings.value = null
         _pump.value = false
@@ -417,6 +422,7 @@ class VentyController(context: Context) {
     ) = coroutineScope {
         // Forget the previous link's status so "Connected" waits for this link to answer.
         deviceStatus = null
+        _reportedStatus.value = null
         launch { l.incoming.collect(::onPacket) }
         // A Volcano reports decoded values instead of status packets; incoming only fails on a drop.
         if (l is VolcanoLink) launch { l.state.collect(::onVolcano) }
@@ -478,6 +484,7 @@ class VentyController(context: Context) {
             if (s.heaterMode != deviceStatus?.heaterMode) Log.i(TAG, "mode ${s.heaterMode}: ${data.toHex()}")
             if (s.heaterMode == HeaterMode.On || s.heaterMode == HeaterMode.Off) normalTarget = s.targetTenths
             deviceStatus = s
+            _reportedStatus.value = s
             publish()
             return
         }
@@ -496,6 +503,7 @@ class VentyController(context: Context) {
         if (s.heaterMode != deviceStatus?.heaterMode) Log.i(TAG, "volcano heater ${s.heaterMode}")
         normalTarget = s.targetTenths
         deviceStatus = s
+        _reportedStatus.value = s
         _deviceSettings.value = v.toSettings()
         _info.value = DeviceInfo(firmware = v.firmware, heaterMinutes = v.heaterMinutes)
         val pump = pendingPump
