@@ -1,4 +1,13 @@
-# Venty Umbrella: visual directions and light gamification
+# Venty Umbrella: SubVenty and permanent collections
+
+## Selected direction: SubVenty
+
+[Open the SubSeven-style reconstruction](subventy/index.html) · [Original screenshots, GitHub source and fidelity notes](subventy/SOURCES.md). The current direction follows the late-1999 SubSeven 2.1 client: lavender caption, blue connection toolbar, cyan sidebar, black shell, dense blue work area, and status strips. Desktop reference proportions and a touch adaptation are shown together.
+
+![SubVenty on desktop and Android](subventy/subventy.png)
+
+The historical source located on GitHub is SubSeven **2.1.2 (April 2000)**, adjacent to the 1999 screenshot reference, and distinct from the later 2.2 remake. The source notes separate verified dimensions/colours/fonts from recreated art and mobile layout changes. Venty controls and collections replace the old commands. No original runtime code is imported.
+
 
 Serve [style-studies.html](style-studies.html) locally for three distinct visual styles, or [index.html](index.html) for collection mechanics (instructions below). No build, account, or hardware is needed. The preview uses synthetic data and resets on reload. It does not send device commands or change the Android app.
 
