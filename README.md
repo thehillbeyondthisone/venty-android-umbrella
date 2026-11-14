@@ -6,9 +6,9 @@ This branch contains the **native Android app**, plus the earlier browser design
 
 ## Next: after hours (iteration 3, source only)
 
-<p align="center"><img src="docs/native-preview/iteration3/02-home-warming.png" alt="SubVenty terminal while warming in boost" width="30%"> <img src="docs/native-preview/iteration3/05-icebreaker.png" alt="ICEBREAKER" width="30%"> <img src="docs/native-preview/iteration3/09-vapor-scr.png" alt="vapor.scr screensaver" width="30%"></p>
+<p align="center"><img src="docs/native-preview/iteration3/02-terminal-heating.png" alt="SubVenty session terminal while heating" width="30%"> <img src="docs/native-preview/iteration3/04-icebreaker.png" alt="ICEBREAKER utility window" width="30%"> <img src="docs/native-preview/iteration3/08-screensaver.png" alt="SubVenty screensaver" width="30%"></p>
 
-The client now runs on a CRT at midnight. It has a phosphor terminal home with real controls and a command line, dial-up and IRC-style event narration, a taskbar with a clock and moon phase, and a `vapor.scr` nightstand screensaver. **ICEBREAKER**, an untimed code-cracking puzzle, pulls lore files from a fictional 1999 BBS. The game layer never reads or rewards sessions, and sound is off by default. This iteration is **not built yet**: install preview 2 below until preview 3 is published. Details, renders and verification are in the [iteration 3 notes](docs/native-preview/iteration3/README.md).
+This iteration builds midnight-hacker features inside the unchanged SubSeven client. A session terminal page has device controls, a command line, and a console that narrates the connection as a dial-up and IRC session. **ICEBREAKER**, an untimed code-cracking utility window, downloads lore files from a fictional 1999 BBS. There is also a silver-seven screensaver and a clock in the status strip. The side game never reads or rewards sessions, and sound is off by default. This iteration is **not built yet**: install preview 2 below until preview 3 is published. Details are in the [iteration 3 notes](docs/native-preview/iteration3/README.md).
 
 ## Try the Android app
 

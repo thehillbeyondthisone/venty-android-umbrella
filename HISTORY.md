@@ -2,7 +2,16 @@
 
 Recent changes, newest first. Use it for context when starting a new session.
 
-## 2026-11-13: SubVenty iteration 3, "after hours" (branch `claude/clever-ride-6r8e2e`)
+## 2026-11-14: iteration 3 brought back inside the SubSeven aesthetic
+
+The owner wants to **build on the SubSeven look, not depart from it**. The authentic preview 2 chrome, reconstructed from the original GitHub source (see `docs/design-exploration/subventy/SOURCES.md`), is the baseline. Don't add new palettes, CRT effects or fonts.
+
+- Restored `SubVentyChrome.kt` and the screen shell to preview 2: solid lavender caption, original buttons and tree, `Color.Gray` frame, segmented status strip and atlas chips. The tree shows on every page, and the "temperature controls » / « device information" footer is back.
+- Removed the night palette, CRT glass, phosphor setting/command and VT323 font (and its license).
+- Redrew the terminal, ICEBREAKER, loot and screensaver with S7 parts only. The new additions are a clock segment in the status strip, the `S7Input` `onSubmit` send action, and the trace bar in the original `$00C08000` menu-border blue.
+- Commands, narration, ICEBREAKER rules, loot lore, the modem sound and the guardrails are unchanged. The tests are still 30 JVM tests (the phosphor test became a modem test).
+
+## 2026-11-13: SubVenty iteration 3, "after hours" (first draft, look superseded above) (branch `claude/clever-ride-6r8e2e`)
 
 Built on `design/visual-directions` (SubVenty preview 2, e70e457). Direction from the owner: a midnight vape session as a 90s hacker, mixing utility, form, nostalgia and hacking-game elements.
 

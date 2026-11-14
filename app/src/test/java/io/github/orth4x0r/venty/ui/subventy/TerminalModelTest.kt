@@ -73,10 +73,9 @@ class TerminalModelTest {
         assertTrue(Terminal.run("handle", venty).actions.isEmpty())
     }
 
-    @Test fun phosphorAndModemAreCosmeticCommands() {
-        assertEquals(listOf(TermAction.SetPhosphor("green")), Terminal.run("phosphor green", venty).actions)
-        assertTrue(Terminal.run("phosphor pink", venty).actions.isEmpty())
+    @Test fun modemIsACosmeticCommand() {
         assertEquals(listOf(TermAction.Sound(true)), Terminal.run("modem on", venty).actions)
+        assertTrue(Terminal.run("modem loud", venty).actions.isEmpty())
     }
 
     @Test fun heatAlreadyOnStillOnlyAsksForHeaterOn() {

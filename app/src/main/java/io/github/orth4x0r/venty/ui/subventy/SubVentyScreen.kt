@@ -54,8 +54,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.Font
-import io.github.orth4x0r.venty.R
 
 private val Caption = S7.Caption
 private val Panel = S7.Panel
@@ -183,7 +181,6 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
             }
             TermAction.Clear -> app.night.clearFeed()
             is TermAction.SetHandle -> app.night.setPrefs(night.copy(handle = action.handle))
-            is TermAction.SetPhosphor -> Phosphor.parse(action.name)?.let { app.night.setPrefs(night.copy(phosphor = it)) }
             is TermAction.Sound -> app.night.setPrefs(night.copy(modemSound = action.on))
             TermAction.Lock -> saver = true
         }
@@ -243,23 +240,20 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
     val reducedMotion = remember(context) {
         android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
     }
-    val termFont = remember { androidx.compose.ui.text.font.FontFamily(Font(R.font.vt323)) }
 
     MaterialTheme(colorScheme = darkColorScheme(primary = Caption, onPrimary = Color.Black,
         background = Color.Black, surface = Panel, onSurface = Color.White,
         onBackground = Color.White, secondary = Cyan, outline = Caption),
         shapes = Shapes(extraSmall = RoundedCornerShape(0.dp), small = RoundedCornerShape(0.dp), medium = RoundedCornerShape(0.dp),
             large = RoundedCornerShape(0.dp), extraLarge = RoundedCornerShape(0.dp))) {
-      CompositionLocalProvider(LocalPhosphor provides night.phosphor, LocalTermFont provides termFont,
-          LocalReducedMotion provides reducedMotion) {
-       Box(Modifier.fillMaxSize().background(Night.Room).pointerInput(Unit) {
+      CompositionLocalProvider(LocalReducedMotion provides reducedMotion) {
+       Box(Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) {
            // Watch (never consume) touches so vapor.scr only appears after real idleness.
            awaitPointerEventScope { while (true) { awaitPointerEvent(PointerEventPass.Initial); lastTouch = System.currentTimeMillis() } }
        }) {
-        CrtGlass(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(5.dp)
-            .border(1.dp, Color(0xFF4A4E66))) {
-            Row(Modifier.fillMaxWidth().background(S7.CaptionBrush).heightIn(min = 48.dp).padding(start = 7.dp),
+            .border(1.dp, Color.Gray)) {
+            Row(Modifier.fillMaxWidth().background(Caption).heightIn(min = 48.dp).padding(start = 7.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 SilverSeven(Modifier.size(20.dp))
                 Text("SubVenty", color = Color.White, fontSize = 14.sp,
@@ -298,17 +292,14 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                     val stacked = maxWidth < 350.dp || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
                     Column(Modifier.fillMaxSize()) {
                         Row(Modifier.weight(1f).fillMaxWidth().padding(5.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            // The terminal wants the full width; the tree stays one tap away in the toolbar navigator.
-                            if (!stacked && !focusMode && page != PAGE_TERMINAL) NavigationTree(page, ::navigate,
+                            if (!stacked && !focusMode) NavigationTree(page, ::navigate,
                                 Modifier.width(116.dp).fillMaxHeight().border(1.dp, Color(0xFF34343D)))
                             Column(Modifier.weight(1f).fillMaxHeight()) {
                                 ClientWorkspace(page, Modifier.weight(1f)) {
-                                    if (page != PAGE_TERMINAL) {
                                     Label(listOf("device information", "temperature control", "session archive", "collection browser",
                                         "field notes", "weekly postcard", "local options", "link monitor", "ramp manager", "device properties",
-                                        "terminal", "icebreaker", "loot").getOrElse(page) { "device information" }, 13)
+                                        "session terminal", "icebreaker", "loot").getOrElse(page) { "device information" }, 13)
                                     Label("${kind.displayName.lowercase()} / ${if (demo) "demo connection" else if (connected) "device connected" else "not connected"}", 10, Muted)
-                                    }
                                     when (page) {
                                         PAGE_TERMINAL -> TerminalHome(
                                             HomeState(termCtx, feed, live?.let { Terminal.clock(java.time.Duration.ofMillis(sessionTick - it.startMs)) },
@@ -395,7 +386,7 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                             Label("temperature atlas")
                                             if (bands.isEmpty()) Label("No reached temperature bands yet. A band is recorded only after the device reports reached.", 12, Muted)
                                             bands.chunked(3).forEach { row -> Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { row.forEach { band ->
-                                                Box(Modifier.background(Caption).padding(6.dp)) { Label("${Temperature.toDisplay(band * 10, status?.fahrenheit == true)}°$unit", 11, Color.White) }
+                                                Box(Modifier.background(Caption).padding(6.dp)) { Label("${Temperature.toDisplay(band * 10, status?.fahrenheit == true)}°$unit", 11, Color.Black) }
                                             } } }
                                             Label("A map with no finish line. Bands never expire.", 11, Muted)
                                             Label("ember trail")
@@ -425,11 +416,8 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                             }
                                             Label(if (paused) "Collection paused. Your archive stays. Resume will wait until the heater is off; no backfill." else "Pause new automatic session and battery logs. Existing stamps, beads and notes stay.", 11, Muted)
                                             S7Group("terminal") {
-                                                FlatButton("phosphor: ${night.phosphor.label}", {
-                                                    app.night.setPrefs(night.copy(phosphor = Phosphor.entries[(night.phosphor.ordinal + 1) % Phosphor.entries.size]))
-                                                })
                                                 S7Check("modem sound on connect", night.modemSound) { app.night.setPrefs(night.copy(modemSound = it)) }
-                                                S7Check("vapor.scr screensaver when idle", night.screensaver) { app.night.setPrefs(night.copy(screensaver = it)) }
+                                                S7Check("screensaver when idle on the terminal", night.screensaver) { app.night.setPrefs(night.copy(screensaver = it)) }
                                                 Label("handle: ${night.handle} / change it at the prompt with handle <name>", 11, Muted)
                                                 FlatButton("forget loot and found commands", { app.night.clearGame(); notice = "Loot cleared. Your archive is untouched." })
                                             }
@@ -470,25 +458,28 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                         FlatButton("older entries", { archivePage = safePage + 1 }, enabled = safePage < lastPage)
                                     }
                                 }
-                                if (page != PAGE_TERMINAL) FlatButton("« terminal", { page = PAGE_TERMINAL }, Modifier.fillMaxWidth())
+                                FlatButton(if (page == 0) "temperature controls »" else "« device information", { page = if (page == 0) 1 else 0 }, Modifier.fillMaxWidth())
                             }
                         }
                     }
                 }
             }
-            Taskbar(notice.ifBlank { heaterLabel(status, connected) }, if (demo) "demo" else if (connected) "online" else "idle",
-                if (kind.hasBattery && enabled) status!!.battery else null, status?.charging == true, onTask = { advanced = false; page = PAGE_TERMINAL })
-        }
+            val clock = rememberNow()
+            Row(Modifier.fillMaxWidth().background(Panel).semantics { liveRegion = LiveRegionMode.Polite }.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                Box(Modifier.border(1.dp, S7.Border).padding(4.dp)) { Label(if (demo) "demo" else if (connected) "online" else "idle", 10) }
+                Box(Modifier.border(1.dp, S7.Border).padding(4.dp)) { Label("0.5.0", 10) }
+                Box(Modifier.weight(1f).border(1.dp, S7.Border).padding(4.dp)) { Label(notice.ifBlank { heaterLabel(status, connected) }, 10) }
+                Box(Modifier.border(1.dp, S7.Border).padding(4.dp)) { Label(hhmm.format(java.time.Instant.ofEpochMilli(clock).atZone(ZoneId.systemDefault())), 10) }
+            }
         }
         if (saver) VaporScreensaver(termCtx, onWake = { saver = false; lastTouch = System.currentTimeMillis() })
        }
         when (window) {
             "about" -> UtilityWindow("about SubVenty", { window = null }) {
                 SilverSeven(Modifier.fillMaxWidth().height(115.dp))
-                Label("SubVenty ${AppUpdater.currentVersion(context)} // after hours", 16)
-                Label("Personal thermal control for Venty and Volcano Hybrid, dressed as a remote-admin client on a CRT at midnight.")
-                Label("Interface study after the SubSeven client. ICEBREAKER, the loot files and the terminal are cosmetic: they never read or reward your sessions. Your archive and notes remain on this phone.", 11, Muted)
-                Label("VT323 terminal face: SIL Open Font License.", 11, Muted)
+                Label("SubVenty ${AppUpdater.currentVersion(context)}", 16)
+                Label("Personal thermal control. A native companion for Venty and Volcano Hybrid.")
+                Label("Interface study after the SubSeven client. ICEBREAKER and its loot files are a side game: they never read or reward your sessions. Your archive and notes remain on this phone.", 11, Muted)
                 FlatButton("OK", { window = null })
             }
             "navigation" -> UtilityWindow("navigator", { window = null }) {

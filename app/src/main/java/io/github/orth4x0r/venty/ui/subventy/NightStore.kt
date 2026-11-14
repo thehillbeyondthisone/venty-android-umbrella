@@ -7,15 +7,14 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class NightPrefs(
     val handle: String = DEFAULT_HANDLE,
-    val phosphor: Phosphor = Phosphor.Amber,
     /** Synthesised handshake on connect. Off by default, like every sound in the app. */
     val modemSound: Boolean = false,
-    /** vapor.scr after a couple of idle minutes on the terminal. */
+    /** The silver-seven screensaver after a couple of idle minutes on the terminal. */
     val screensaver: Boolean = true,
 )
 
 /**
- * Cosmetic, game-only state for the after-hours terminal. Kept apart from sessions and collections:
+ * Cosmetic, game-only state for the session terminal and ICEBREAKER. Kept apart from sessions and collections:
  * nothing here is derived from, or feeds into, device use.
  */
 class NightStore(context: Context) {
@@ -23,7 +22,6 @@ class NightStore(context: Context) {
 
     private val _prefs = MutableStateFlow(NightPrefs(
         handle = sp.getString("handle", null) ?: DEFAULT_HANDLE,
-        phosphor = Phosphor.parse(sp.getString("phosphor", null)) ?: Phosphor.Amber,
         modemSound = sp.getBoolean("modem", false),
         screensaver = sp.getBoolean("screensaver", true),
     ))
@@ -53,7 +51,7 @@ class NightStore(context: Context) {
     }
 
     @Synchronized fun setPrefs(p: NightPrefs) {
-        sp.edit().putString("handle", p.handle).putString("phosphor", p.phosphor.name)
+        sp.edit().putString("handle", p.handle)
             .putBoolean("modem", p.modemSound).putBoolean("screensaver", p.screensaver).apply()
         _prefs.value = p
     }

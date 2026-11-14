@@ -37,7 +37,6 @@ sealed interface TermAction {
     data class Open(val target: String) : TermAction
     data object Clear : TermAction
     data class SetHandle(val handle: String) : TermAction
-    data class SetPhosphor(val name: String) : TermAction
     data class Sound(val on: Boolean) : TermAction
     data object Lock : TermAction
 }
@@ -75,7 +74,6 @@ data class TermContext(
 data class TermResult(val lines: List<TermLine>, val actions: List<TermAction> = emptyList(), val secret: String? = null)
 
 const val DEFAULT_HANDLE = "guest"
-val PHOSPHOR_NAMES = listOf("amber", "green", "cyan")
 
 /** Short commands for the macro strip; each is just typed into the parser. */
 fun macroCommands(ctx: TermContext): List<String> = buildList {
@@ -102,7 +100,6 @@ object Terminal {
         "  demo [volcano]  find",
         "  log  notes  atlas  loot",
         "  icebreaker    lock",
-        "  phosphor <amber|green|cyan>",
         "  handle <name> modem <on|off>",
         "  clear         settings",
         "temps use the device's unit;",
@@ -185,8 +182,6 @@ object Terminal {
                 if (name.isNullOrEmpty()) TermResult(out("usage: handle <name>  (letters, digits, _ - .)", tone = Tone.Dim))
                 else TermResult(out("*** ${ctx.handle} is now known as $name", tone = Tone.Irc), listOf(TermAction.SetHandle(name)))
             }
-            "phosphor", "color", "colour" -> if (arg in PHOSPHOR_NAMES) TermResult(out("phosphor -> $arg", tone = Tone.Ok), listOf(TermAction.SetPhosphor(arg!!)))
-                else TermResult(out("usage: phosphor amber|green|cyan", tone = Tone.Dim))
             "modem", "sound" -> when (arg) {
                 "on" -> TermResult(out("modem speaker on. it will sing when you connect.", tone = Tone.Ok), listOf(TermAction.Sound(true)))
                 "off" -> TermResult(out("modem speaker off.", tone = Tone.Ok), listOf(TermAction.Sound(false)))
@@ -279,10 +274,7 @@ object Terminal {
     fun motd(ctx: TermContext): List<String> {
         val m = Moon.at(ctx.nowMs)
         return listOf(
-            "+----------------------------+",
-            "|  S U B V E N T Y  // 0.5   |",
-            "|  after hours terminal      |",
-            "+----------------------------+",
+            "SubVenty 0.5 / session console",
             greeting(ctx),
             "moon ${m.name}. ${if (ctx.lootCount > 0) "${ctx.lootCount} files in ~/loot." else "~/loot is empty."}",
             "type help. or don't. no rush.",

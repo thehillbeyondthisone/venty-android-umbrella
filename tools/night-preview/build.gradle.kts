@@ -1,7 +1,7 @@
 /*
- * Renders the after-hours terminal surfaces with Compose for Desktop and runs their unit tests,
+ * Renders the SubVenty terminal, ICEBREAKER, loot and screensaver surfaces with Compose for Desktop and runs their unit tests,
  * using only Maven Central. Cloud containers can't reach Google Maven, so this is how the night UI
- * gets compile-checked and screenshotted there. It copies the pure-Compose app files (no Android
+ * gets compile-checked and screenshotted there, in the preview-2 SubSeven chrome. It copies the pure-Compose app files (no Android
  * types) at build time; it is a design-review aid, not a substitute for the Android build.
  *
  *   ./gradlew -p tools/night-preview run    # PNGs in tools/night-preview/out
@@ -54,7 +54,4 @@ sourceSets {
 }
 
 application { mainClass.set("harness.RenderKt") }
-tasks.named<JavaExec>("run") {
-    workingDir = projectDir
-    args(appSrc.resolve("main/res/font/vt323.ttf").absolutePath)
-}
+tasks.named<JavaExec>("run") { workingDir = projectDir }
