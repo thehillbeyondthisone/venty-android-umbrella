@@ -6,20 +6,24 @@ This branch contains the **native Android app**, plus the earlier browser design
 
 ## Try the Android app
 
-1. On your Android phone, [download SubVenty preview 3](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview3/subventy-0.4.0-preview3.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
+1. On your Android phone, [download SubVenty preview 4](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview4/subventy-0.4.0-preview4.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
 2. Open the downloaded APK. Android may ask you to allow installs from the browser or Files app you used.
 3. Launch **SubVenty**. Try **Demo Venty** or **Demo Volcano** first. Demo entries are labeled and stored separately from hardware entries.
 4. For a real device, allow Nearby devices/Bluetooth access, enable Bluetooth, select **Scan for devices**, then select your Venty or Volcano.
 
-The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview3) contains the APK and checksum.
+The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview4) contains the APK and checksum.
 
-Preview 3 is version **0.4.0-subventy.3** (code 11). Install it as an update over either earlier preview to retain your local archive and preferences.
+Preview 4 is version **0.4.0-subventy.4** (code 12). Install it over an earlier preview to retain your local archive and preferences.
 
 Android 8.0+ is required. This preview uses a separate application ID (`io.github.thehillbeyondthisone.subventy`), so it can coexist with the upstream Venty app. Close/disconnect the other controller before connecting SubVenty to the same physical device.
 
 You do **not** need to merge the PR, install Android Studio, or build anything yourself to install the APK. On GitHub, HTML files show their source; they do not launch the native app.
 
-## New in preview 3
+## Room lighting in preview 4
+
+The **Lighting Desk** applies a saved look to your Home Assistant lights during heat-up, at temperature, during an estimated Venty draw, and at session end. Edit and share named profiles with their own colors, brightness and fades. A Home Assistant blueprint handles the light selection. [Set up Govee room lighting](docs/home-assistant/README.md).
+
+## Session collections
 
 - **Temperature Atlas** opens around your recorded 5 °C bands. Tap a stamp to inspect the sessions behind it or open their Field Notes. The full map is available on demand.
 - **Ember Trail** draws one ember per recorded session. Page through the trail to see older sessions.
@@ -45,7 +49,7 @@ Atlas stamps use **device-reported reached targets**, not optimistic slider edit
 
 ## Scope and validation
 
-This is a native test APK. Compilation, **116 unit tests**, and Android lint pass locally. The previous preview's device controls, native utility windows and archive export were exercised on Android 15. [Preview 2 screenshots and results](docs/native-preview/iteration2/README.md).
+This is a native test APK. Compilation, **121 unit tests**, and Android lint pass locally. The previous preview's device controls, native utility windows and archive export were exercised on Android 15. [Preview 2 screenshots and results](docs/native-preview/iteration2/README.md).
 
 The APK is debug-signed for personal testing. Keep the signing key for future compatible updates; do not publish it in the repository. The in-app updater points to **this fork**, not the upstream release feed. Draft/prerelease builds are installed manually.
 

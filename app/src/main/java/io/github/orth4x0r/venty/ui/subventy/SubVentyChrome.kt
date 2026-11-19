@@ -38,6 +38,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 
 internal object S7 {
     val Caption = Color(0xFF8076B4)
@@ -113,6 +115,7 @@ internal object S7 {
         S7IconButton("Session archive", Icons.Outlined.Storage, { onPage(2) })
         S7IconButton("Field notes", Icons.Outlined.Description, { onPage(4) })
         S7IconButton("Dial-in comparisons", Icons.AutoMirrored.Outlined.CompareArrows, { onPage(10) })
+        S7IconButton("Lighting desk", Icons.Outlined.Lightbulb, { onPage(11) })
         S7IconButton("Locate device", Icons.Outlined.MyLocation, { onWindow("find") }, enabled = locateEnabled)
         S7IconButton("Device settings", Icons.Outlined.Tune, { onWindow("settings") })
         S7IconButton("About SubVenty", Icons.Outlined.HelpOutline, { onWindow("about") })
@@ -124,7 +127,7 @@ private val groups = listOf(
     TreeGroup("system", listOf(0 to "connection", 7 to "link monitor")),
     TreeGroup("control", listOf(1 to "temperature", 8 to "ramp editor", 9 to "device settings")),
     TreeGroup("archive", listOf(2 to "session log", 3 to "collections", 4 to "field notes")),
-    TreeGroup("personal", listOf(10 to "dial-in", 5 to "postcard", 6 to "local options")),
+    TreeGroup("personal", listOf(11 to "lighting", 10 to "dial-in", 5 to "postcard", 6 to "local options")),
 )
 
 @Composable internal fun NavigationTree(page: Int, onPage: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -190,7 +193,7 @@ private val groups = listOf(
 }
 
 @Composable internal fun S7Input(label: String, value: String, onChange: (String) -> Unit,
-    modifier: Modifier = Modifier, numeric: Boolean = false, singleLine: Boolean = true) {
+    modifier: Modifier = Modifier, numeric: Boolean = false, singleLine: Boolean = true, secret: Boolean = false) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         S7Text(label, 11, S7.Muted)
         BasicTextField(value, onChange, Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -198,7 +201,12 @@ private val groups = listOf(
             .semantics { contentDescription = label },
             textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
             cursorBrush = SolidColor(Color.White), singleLine = singleLine,
-            keyboardOptions = KeyboardOptions(keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text))
+            visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
+            keyboardOptions = KeyboardOptions(keyboardType = when {
+                secret -> KeyboardType.Password
+                numeric -> KeyboardType.Number
+                else -> KeyboardType.Text
+            }))
     }
 }
 

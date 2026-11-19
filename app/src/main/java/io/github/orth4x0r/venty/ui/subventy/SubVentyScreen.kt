@@ -194,7 +194,7 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                             Column(Modifier.weight(1f).fillMaxHeight()) {
                                 ClientWorkspace(page, Modifier.weight(1f)) {
                                     Label(listOf("device information", "temperature control", "session archive", "collection browser",
-                                        "field notes", "weekly postcard", "local options", "link monitor", "ramp manager", "device properties", "dial-in").getOrElse(page) { "device information" }, 13)
+                                        "field notes", "weekly postcard", "local options", "link monitor", "ramp manager", "device properties", "dial-in", "lighting desk").getOrElse(page) { "device information" }, 13)
                                     Label("${kind.displayName.lowercase()} / ${if (demo) "demo connection" else if (connected) "device connected" else "not connected"}", 10, Muted)
                                     when (page) {
                                         0 -> {
@@ -301,6 +301,7 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                             InfoLine("reminders", "none")
                                             InfoLine("storage", "local")
                                             FlatButton("client options…", { window = "client" })
+                                            FlatButton("lighting desk…", { navigate(11) })
                                             FlatButton("device properties…", { window = "settings" })
                                             FlatButton("export archive…", { window = null; exportArchive.launch("subventy-archive.json") })
                                             Label("${AppUpdater.currentVersion(context)} / native client", 11, Muted)
@@ -335,6 +336,7 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                                 }
                                             }
                                         }
+                                        11 -> LightingDesk(app.lighting, paused)
                                     }
                                     if ((page == 2 || page == 4) && filteredArchive.size > 20) {
                                         Label("page ${safePage + 1} / ${lastPage + 1}", 11, Muted)

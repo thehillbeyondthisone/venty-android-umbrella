@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import io.github.orth4x0r.venty.ble.ConnectionState
 import io.github.orth4x0r.venty.ble.VentyController
+import io.github.orth4x0r.venty.lighting.HomeAssistantLighting
 import io.github.orth4x0r.venty.prefs.BatteryLog
 import io.github.orth4x0r.venty.prefs.PrefsStore
 import io.github.orth4x0r.venty.service.VentyService
@@ -30,12 +31,14 @@ class VentyApp : Application() {
     val battery: BatteryLog by lazy { BatteryLog(this) }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    internal val lighting by lazy { HomeAssistantLighting(this, controller, collections.paused, scope) }
 
     override fun onCreate() {
         super.onCreate()
 
         // Load saved prefs, sessions and battery history off the main thread before the UI asks.
         scope.launch(Dispatchers.IO) { prefs; sessions; battery }
+        scope.launch { lighting }
 
         // Keep the connection alive in the background while there is one.
         scope.launch {
