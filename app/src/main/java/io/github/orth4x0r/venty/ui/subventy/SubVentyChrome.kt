@@ -11,6 +11,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.CompareArrows
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -111,6 +112,7 @@ internal object S7 {
         S7IconButton("Temperature ramp", Icons.Outlined.Timeline, { onWindow("ramp") })
         S7IconButton("Session archive", Icons.Outlined.Storage, { onPage(2) })
         S7IconButton("Field notes", Icons.Outlined.Description, { onPage(4) })
+        S7IconButton("Dial-in comparisons", Icons.AutoMirrored.Outlined.CompareArrows, { onPage(10) })
         S7IconButton("Locate device", Icons.Outlined.MyLocation, { onWindow("find") }, enabled = locateEnabled)
         S7IconButton("Device settings", Icons.Outlined.Tune, { onWindow("settings") })
         S7IconButton("About SubVenty", Icons.Outlined.HelpOutline, { onWindow("about") })
@@ -122,7 +124,7 @@ private val groups = listOf(
     TreeGroup("system", listOf(0 to "connection", 7 to "link monitor")),
     TreeGroup("control", listOf(1 to "temperature", 8 to "ramp editor", 9 to "device settings")),
     TreeGroup("archive", listOf(2 to "session log", 3 to "collections", 4 to "field notes")),
-    TreeGroup("personal", listOf(5 to "postcard", 6 to "local options")),
+    TreeGroup("personal", listOf(10 to "dial-in", 5 to "postcard", 6 to "local options")),
 )
 
 @Composable internal fun NavigationTree(page: Int, onPage: (Int) -> Unit, modifier: Modifier = Modifier) {

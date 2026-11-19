@@ -13,20 +13,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
@@ -34,7 +29,6 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -49,16 +43,11 @@ import io.github.orth4x0r.venty.collections.CollectionEntry
 import io.github.orth4x0r.venty.ui.Temperature
 import io.github.orth4x0r.venty.ui.dashboard.DashboardScreen
 import java.text.DateFormat
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
 
 private val Caption = S7.Caption
 private val Panel = S7.Panel
 private val Cyan = S7.Link
-private val MenuBorder = Color(0xFF0080C0)
 private val Muted = S7.Muted
-private val pages = listOf("connection", "temperature", "session log", "collections", "field notes", "rituals", "local options")
 
 /** Native Compose client. Every device write goes through the existing controller. */
 @Composable
@@ -76,6 +65,8 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
     val ramp by controller.ramp.collectAsStateWithLifecycle()
     val entries by app.collections.entries.collectAsStateWithLifecycle()
     val paused by app.collections.paused.collectAsStateWithLifecycle()
+    val comparisons by app.collections.comparisons.collectAsStateWithLifecycle()
+    val putAwayWeek by app.collections.putAwayWeek.collectAsStateWithLifecycle()
     val prefs by app.prefs.app.collectAsStateWithLifecycle()
     val presets by app.prefs.presets.collectAsStateWithLifecycle()
     val live by app.sessions.live.collectAsStateWithLifecycle()
@@ -100,7 +91,16 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
         else -> controller.lastDeviceName ?: kind.displayName
     }
     val key = if (demo) "demo:${kind.name}" else controller.lastDeviceAddress ?: kind.name
-    val archive = entries.filter { showAll || it.device == key }
+    val archiveDevice = key.takeUnless { showAll }
+    val archiveScope = archiveDevice?.let { "device:$it" } ?: "all"
+    val archive = remember(entries, archiveDevice) {
+        if (archiveDevice == null) entries else entries.filter { it.device == archiveDevice }
+    }
+    fun editNote(entry: CollectionEntry) {
+        editingId = entry.id
+        noteDraft = entry.note
+        window = "note"
+    }
     val filteredArchive = archive.filter { query.isBlank() || it.note.contains(query, ignoreCase = true) ||
         DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(it.startMs).contains(query, ignoreCase = true) }
     val lastPage = ((filteredArchive.size - 1).coerceAtLeast(0) / 20)
@@ -127,8 +127,10 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                     val array = JSONArray()
                     entries.forEach { e -> array.put(JSONObject().put("id", e.id).put("startMs", e.startMs)
                         .put("endMs", e.endMs).put("device", e.device).put("reachedBandsC", JSONArray(e.bands)).put("note", e.note)) }
+                    val dialIn = JSONObject()
+                    comparisons.forEach { (scope, comparison) -> dialIn.put(scope, comparison.toJson()) }
                     val json = JSONObject().put("schema", "subventy.archive").put("version", 1).put("paused", paused)
-                        .put("entries", array).toString(2)
+                        .put("entries", array).put("dialInComparisons", dialIn).toString(2)
                     context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(json) }
                         ?: error("Could not open the selected file")
                 }
@@ -192,7 +194,7 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                             Column(Modifier.weight(1f).fillMaxHeight()) {
                                 ClientWorkspace(page, Modifier.weight(1f)) {
                                     Label(listOf("device information", "temperature control", "session archive", "collection browser",
-                                        "field notes", "weekly postcard", "local options", "link monitor", "ramp manager", "device properties").getOrElse(page) { "device information" }, 13)
+                                        "field notes", "weekly postcard", "local options", "link monitor", "ramp manager", "device properties", "dial-in").getOrElse(page) { "device information" }, 13)
                                     Label("${kind.displayName.lowercase()} / ${if (demo) "demo connection" else if (connected) "device connected" else "not connected"}", 10, Muted)
                                     when (page) {
                                         0 -> {
@@ -261,24 +263,15 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                             visibleEntries.forEach { e ->
                                                 ArchiveRow(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(e.startMs),
                                                     "${(e.endMs - e.startMs) / 60000} min / ${if(e.device.startsWith("demo:")) "demo" else "device"}" + if(e.note.isNotBlank()) " / ${e.note}" else "",
-                                                    { editingId = e.id; noteDraft = e.note; window = "note" })
+                                                    { editNote(e) })
                                             }
                                             if (archive.isNotEmpty() && filteredArchive.isEmpty()) Label("No entries match this search.", 11, Muted)
                                             if (live != null) Label("Session in progress. It will be archived after the heater is off.", 11, Muted)
                                         }
                                         3 -> {
                                             ArchiveScope(showAll, { showAll = !showAll; archivePage = 0 }, demo)
-                                            val bands = archive.flatMap { it.bands }.distinct().sorted()
-                                            Label("temperature atlas")
-                                            if (bands.isEmpty()) Label("No reached temperature bands yet. A band is recorded only after the device reports reached.", 12, Muted)
-                                            bands.chunked(3).forEach { row -> Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { row.forEach { band ->
-                                                Box(Modifier.background(Caption).padding(6.dp)) { Label("${Temperature.toDisplay(band * 10, status?.fahrenheit == true)}°$unit", 11, Color.Black) }
-                                            } } }
-                                            Label("A map with no finish line. Bands never expire.", 11, Muted)
-                                            Label("ember trail")
-                                            EmberTrail(archive.size)
-                                            Label("${archive.size} beads / one per recorded session", 11, Muted)
-                                            Label("The permanent archive is independent of recent history.", 11, Muted)
+                                            CollectionBrowser(archive, if (showAll) 230 else kind.maxTarget / 10,
+                                                status?.fahrenheit == true, archiveScope, ::editNote)
                                         }
                                         4 -> {
                                             ArchiveScope(showAll, { showAll = !showAll; archivePage = 0 }, demo)
@@ -288,10 +281,13 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                             visibleEntries.forEach { entry -> ArchiveRow(
                                                 DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(entry.startMs),
                                                 entry.note.ifBlank { "no note yet / open to write one" },
-                                                { editingId = entry.id; noteDraft = entry.note; window = "note" }) }
+                                                { editNote(entry) }) }
                                             if (archive.isNotEmpty() && filteredArchive.isEmpty()) Label("No notes match this search.", 11, Muted)
                                         }
-                                        5 -> WeeklyPostcard(archive)
+                                        5 -> {
+                                            ArchiveScope(showAll, { showAll = !showAll; archivePage = 0 }, demo)
+                                            WeeklyPostcard(archive, status?.fahrenheit == true, putAwayWeek, app.collections::setPutAwayWeek)
+                                        }
                                         6 -> {
                                             Label("local options")
                                             S7Check("do not track", paused) { value ->
@@ -330,6 +326,14 @@ fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothO
                                             InfoLine("firmware", info.firmware ?: "—")
                                             FlatButton("open device properties…", { window = "settings" })
                                             if (kind.hasVentyExtras) FlatButton("find my device…", { window = "find" }, enabled = connected)
+                                        }
+                                        10 -> {
+                                            ArchiveScope(showAll, { showAll = !showAll; archivePage = 0 }, demo)
+                                            DialInPanel(archive, comparisons[archiveScope], archiveScope, status?.fahrenheit == true) { draft ->
+                                                app.collections.saveComparison(archiveDevice, draft).also { saved ->
+                                                    notice = if (saved) "Comparison saved." else "A selected session is no longer available."
+                                                }
+                                            }
                                         }
                                     }
                                     if ((page == 2 || page == 4) && filteredArchive.size > 20) {
@@ -412,39 +416,6 @@ private fun heaterLabel(s: VentyStatus?, connected: Boolean): String = when {
     Label(if (all) "all saved devices / includes demo entries" else if (demo) "demo archive / simulated sessions" else "this device's archive", 11, Muted)
     FlatButton(if (all) "show this device" else "show all devices", onToggle)
 }
-@Composable private fun EmberTrail(count: Int) {
-    Canvas(Modifier.fillMaxWidth().height(145.dp)) {
-        // A bounded constellation viewport keeps rendering cheap; the full bead count is retained.
-        val visible = minOf(count, 120)
-        var previous: androidx.compose.ui.geometry.Offset? = null
-        repeat(visible) { i ->
-            val point = androidx.compose.ui.geometry.Offset(size.width * (.08f + ((i * 73) % 83) / 100f), size.height * (.1f + ((i * 41) % 80) / 100f))
-            previous?.let { drawLine(Caption.copy(alpha = .5f), it, point, 1.dp.toPx(), StrokeCap.Round) }
-            drawCircle(Cyan, 3.dp.toPx(), point)
-            previous = point
-        }
-    }
-}
-@Composable private fun WeeklyPostcard(entries: List<CollectionEntry>) {
-    val zone = ZoneId.systemDefault()
-    val today = LocalDate.now(zone)
-    val monday = today.minusDays((today.dayOfWeek.value - 1).toLong())
-    val week = entries.filter { val d = Instant.ofEpochMilli(it.startMs).atZone(zone).toLocalDate(); !d.isBefore(monday) && !d.isAfter(today) }
-    var dismissed by rememberSaveable(monday.toString()) { mutableStateOf(false) }
-    Label("weekly postcard")
-    if (dismissed) {
-        Label("Postcard put away. Your archive stays.", 12, Muted)
-        FlatButton("view postcard", { dismissed = false })
-    } else {
-        val band = week.flatMap { it.bands }.groupingBy { it }.eachCount().entries.sortedWith(compareByDescending<Map.Entry<Int, Int>> { it.value }.thenBy { it.key }).firstOrNull()?.key
-        Label("${week.size} recorded sessions this week.")
-        Label(band?.let { "favourite reached band: $it–${it + 4} °C" } ?: "A quiet week. Nothing to keep up with.", 12, Muted)
-        EmberTrail(week.size)
-        Label("A small picture of your week. No rankings or goals.", 11, Muted)
-        FlatButton("put postcard away", { dismissed = true })
-    }
-}
-
 private fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
     is android.app.Activity -> this
     is android.content.ContextWrapper -> baseContext.findActivity()

@@ -6,20 +6,27 @@ This branch contains the **native Android app**, plus the earlier browser design
 
 ## Try the Android app
 
-1. On your Android phone, [download SubVenty preview 2](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview2/subventy-0.4.0-preview2.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
+1. On your Android phone, [download SubVenty preview 3](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview3/subventy-0.4.0-preview3.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
 2. Open the downloaded APK. Android may ask you to allow installs from the browser or Files app you used.
 3. Launch **SubVenty**. Try **Demo Venty** or **Demo Volcano** first. Demo entries are labeled and stored separately from hardware entries.
 4. For a real device, allow Nearby devices/Bluetooth access, enable Bluetooth, select **Scan for devices**, then select your Venty or Volcano.
 
-The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview2) contains the APK and checksum. The binary is kept off the implementation branch. GitHub rejected release-asset uploads for the current integration, so this branch supplies the download.
+The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview3) contains the APK and checksum.
 
-Preview 2 is version **0.4.0-subventy.2** (code 10). It uses the same application ID and signing certificate as preview 1: install it as an update to retain your local archive and preferences. You do not need to uninstall first.
+Preview 3 is version **0.4.0-subventy.3** (code 11). Install it as an update over either earlier preview to retain your local archive and preferences.
 
 Android 8.0+ is required. This preview uses a separate application ID (`io.github.thehillbeyondthisone.subventy`), so it can coexist with the upstream Venty app. Close/disconnect the other controller before connecting SubVenty to the same physical device.
 
 You do **not** need to merge the PR, install Android Studio, or build anything yourself to install the APK. On GitHub, HTML files show their source; they do not launch the native app.
 
-## Included in preview 2
+## New in preview 3
+
+- **Temperature Atlas** opens around your recorded 5 °C bands. Tap a stamp to inspect the sessions behind it or open their Field Notes. The full map is available on demand.
+- **Ember Trail** draws one ember per recorded session. Page through the trail to see older sessions.
+- **Dial-in** compares two or three distinct reached bands from past sessions. Choose the session for each band, add optional impressions and a short note, and save one editable comparison for the current archive view. Comparisons are included in JSON export.
+- **Weekly postcard** shows the recorded session count and the most frequently recorded band. Swipe sideways or use the button to put it away. The app remembers the dismissal for the week and lets you reopen it.
+
+## Device controls and local archive
 
 - Lavender caption strip, blue connection row and icon toolbar, expandable tree navigation, charcoal workspace, embossed S7 badge, silver pixel-edged seven and segmented status strip. The layout follows the newer user-supplied SubSeven/Legacy references; the earlier 1999 browser reconstruction remains available separately.
 - Matching square utility windows for ramps, device properties, Find My, note editing, client options, navigation and About. The title-bar controls minimize the app, expand the workspace and close the client window.
@@ -38,11 +45,11 @@ Atlas stamps use **device-reported reached targets**, not optimistic slider edit
 
 ## Scope and validation
 
-This is a native test APK. Compilation, **116 unit tests**, and Android lint pass locally. Android 15 emulator checks cover installation/update, demo connection, target adjustment, heater controls, toolbar/tree navigation, utility windows, workspace expansion and archive export. Screenshots and detailed results are in [the preview 2 notes](docs/native-preview/iteration2/README.md). Physical Bluetooth, manufacturer-specific firmware behavior, watch integration and real-phone ergonomics still need device testing.
+This is a native test APK. Compilation, **116 unit tests**, and Android lint pass locally. The previous preview's device controls, native utility windows and archive export were exercised on Android 15. [Preview 2 screenshots and results](docs/native-preview/iteration2/README.md).
 
 The APK is debug-signed for personal testing. Keep the signing key for future compatible updates; do not publish it in the repository. The in-app updater points to **this fork**, not the upstream release feed. Draft/prerelease builds are installed manually.
 
-Passive achievements, Dial-in comparisons, calendar palettes, optional user-chosen chimes, and easter eggs remain in the [design brief](docs/design-exploration/README.md); they are not implemented in this preview. There are no new push reminders, streaks, rankings, or consumption goals.
+The [design brief](docs/design-exploration/README.md) covers future ideas including passive achievements, calendar palettes, optional chimes and easter eggs.
 
 ## Build locally (optional)
 

@@ -11,12 +11,59 @@ import org.json.JSONObject
 data class CollectionEntry(val id: String, val startMs: Long, val endMs: Long, val device: String,
     val bands: List<Int>, val note: String = "")
 
+enum class Impression { Enjoyed, Neutral }
+
+data class DialInPick(val sessionId: String, val band: Int, val impression: Impression? = null)
+
+data class DialInComparison(val picks: List<DialInPick>, val note: String = "") {
+    fun toJson(): JSONObject = JSONObject().put("note", note).put("picks", JSONArray().apply {
+        picks.forEach { pick ->
+            put(JSONObject().put("sessionId", pick.sessionId).put("bandC", pick.band)
+                .put("impression", pick.impression?.name))
+        }
+    })
+
+    companion object {
+        fun fromJson(json: JSONObject): DialInComparison {
+            val picks = json.getJSONArray("picks")
+            return DialInComparison(List(picks.length()) { index ->
+                val pick = picks.getJSONObject(index)
+                DialInPick(pick.getString("sessionId"), pick.getInt("bandC"),
+                    Impression.entries.firstOrNull { it.name == pick.optString("impression") })
+            }, json.optString("note"))
+        }
+    }
+}
+
 class CollectionStore(context: Context) {
     private val prefs = context.getSharedPreferences("subventy_collections", Context.MODE_PRIVATE)
     private val _paused = MutableStateFlow(prefs.getBoolean("paused", false))
     val paused = _paused.asStateFlow()
     private val _entries = MutableStateFlow(load())
     val entries = _entries.asStateFlow()
+    private val _comparisons = MutableStateFlow(loadComparisons())
+    val comparisons = _comparisons.asStateFlow()
+    private val _putAwayWeek = MutableStateFlow(prefs.getString("putAwayWeek", null))
+    val putAwayWeek = _putAwayWeek.asStateFlow()
+
+    @Synchronized fun saveComparison(device: String?, comparison: DialInComparison): Boolean {
+        val picks = comparison.picks
+        if (picks.size !in 2..3 || picks.distinctBy { it.band }.size != picks.size ||
+            picks.distinctBy { it.sessionId }.size != picks.size) return false
+        val entriesById = _entries.value.associateBy { it.id }
+        if (picks.any { pick ->
+                val entry = entriesById[pick.sessionId]
+                entry == null || pick.band !in entry.bands || (device != null && entry.device != device)
+            }) return false
+        val scope = device?.let { "device:$it" } ?: "all"
+        saveComparisons(_comparisons.value + (scope to comparison.copy(note = comparison.note.trim().take(120))))
+        return true
+    }
+
+    @Synchronized fun setPutAwayWeek(week: String?) {
+        prefs.edit().putString("putAwayWeek", week).apply()
+        _putAwayWeek.value = week
+    }
 
     @Synchronized fun setPaused(paused: Boolean) {
         prefs.edit().putBoolean("paused", paused).apply()
@@ -33,7 +80,27 @@ class CollectionStore(context: Context) {
         save(_entries.value.map { if (it.id == id) it.copy(note = note.trim().take(120)) else it })
     }
 
-    @Synchronized fun clear() { save(emptyList()) }
+    @Synchronized fun clear() {
+        save(emptyList())
+        saveComparisons(emptyMap())
+    }
+
+    private fun saveComparisons(comparisons: Map<String, DialInComparison>) {
+        val json = JSONObject()
+        comparisons.forEach { (scope, comparison) -> json.put(scope, comparison.toJson()) }
+        prefs.edit().putString("dialInComparisons", json.toString()).apply()
+        _comparisons.value = comparisons
+    }
+
+    private fun loadComparisons(): Map<String, DialInComparison> {
+        val stored = prefs.getString("dialInComparisons", null) ?: return emptyMap()
+        val json = runCatching { JSONObject(stored) }.getOrElse { return emptyMap() }
+        return buildMap {
+            json.keys().forEach { scope ->
+                runCatching { DialInComparison.fromJson(json.getJSONObject(scope)) }.getOrNull()?.let { put(scope, it) }
+            }
+        }
+    }
 
     private fun save(entries: List<CollectionEntry>) {
         val array = JSONArray()
