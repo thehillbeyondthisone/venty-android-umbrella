@@ -2,9 +2,13 @@
 
 SubVenty preview 4 sends lighting cues from your Android phone to a Home Assistant automation. That automation applies the look to the Govee light entities or light group you choose. Home Assistant owns the light selection, and SubVenty owns the profile.
 
+| Lighting Desk | Profile editor |
+| --- | --- |
+| ![Lighting Desk with the Ultraviolet profile on Android](lighting-desk.png) | ![Phosphor Terminal profile editor on Android](profile-editor.png) |
+
 ## Set it up
 
-1. In Home Assistant, open the Govee lights you want to use and verify you can set their color and brightness there. You can select several lights or create a light group.
+1. In Home Assistant, open the Govee lights you want to use and verify you can set their color and brightness there. If they are missing, check whether your models support the [Govee lights local integration](https://www.home-assistant.io/integrations/govee_light_local/). You can select several lights or create a light group.
 2. On your phone, install [SubVenty preview 4](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview4/subventy-0.4.0-preview4.apk?raw=true). Connect your phone to the same network as the Pi.
 3. Open **Lighting Desk** using the lightbulb in the toolbar, or choose **personal → lighting** in the navigation tree. Open **Home Assistant setup**. The address starts at `http://192.168.1.170:8123`. Use your actual port or HTTPS base address if yours differs. Copy the generated **Webhook ID** and tap **Save bridge**.
 4. In Home Assistant, go to **Settings → Automations & scenes → Blueprints → Import blueprint** and paste the [blueprint URL](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/design/visual-directions/docs/home-assistant/subventy-lighting.yaml). The setup window can copy this URL for you.
@@ -26,3 +30,5 @@ Automatic changes use actual Bluetooth status from a connected device. On a Vent
 The bridge starts with automatic lighting off. **Do not track** pauses automatic lighting as well as the existing session recording. Disabling automatic lighting or pausing leaves the lights at their last state. You can still preview a look explicitly. A session ending or its active Bluetooth connection dropping applies the profile's session-end look while the bridge remains enabled and reachable.
 
 The blueprint accepts POST requests from the local network and only controls its configured light entities. Its webhook ID is the secret. Keep it out of shared profiles and generate a new ID in both places if you need to rotate it. The app permits HTTP to the Pi's configured default IP and to `homeassistant.local`. For other hosts, enter an HTTPS base URL with a certificate the phone trusts.
+
+The Android 15 emulator installed preview 4 over preview 3, saved a bridge configuration and a named profile, and sent the expected Draw cue to a mock Home Assistant webhook. The actual Pi and Govee response need a local network test.
