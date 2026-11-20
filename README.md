@@ -42,7 +42,7 @@ Archive search and Field Notes display local records. Device-reported reached ta
 
 ## Scope and validation
 
-This is a native test APK. The debug build, unit tests and Android lint run locally. The Android emulator uses the built-in device simulators. Physical Venty and Volcano behavior needs a hardware check.
+This is a native test APK. The debug build, unit tests and Android lint run locally. The Android emulator uses the built-in device simulators. Physical Venty and Volcano behavior needs a hardware check. [Preview 5 screenshots and test results](docs/native-preview/iteration5/README.md).
 
 The APK is debug-signed for personal testing. Keep the signing key for future compatible updates; do not publish it in the repository. The in-app updater points to **this fork**, not the upstream release feed. Draft/prerelease builds are installed manually.
 
