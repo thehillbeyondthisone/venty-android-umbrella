@@ -3,423 +3,452 @@ package io.github.orth4x0r.venty.ui.subventy
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.text.style.TextOverflow
-import io.github.orth4x0r.venty.update.AppUpdater
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.clickable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.orth4x0r.venty.VentyApp
 import io.github.orth4x0r.venty.ble.*
 import io.github.orth4x0r.venty.collections.CollectionEntry
-import io.github.orth4x0r.venty.ui.Temperature
-import io.github.orth4x0r.venty.ui.dashboard.DashboardScreen
+import io.github.orth4x0r.venty.ui.HeatHaptics
+import io.github.orth4x0r.venty.ui.heatProgress
+import io.github.orth4x0r.venty.ui.history.HistoryScreen
+import io.github.orth4x0r.venty.ui.settings.SettingsScreen
+import io.github.orth4x0r.venty.ui.wrapped.WrappedScreen
+import io.github.orth4x0r.venty.update.AppUpdater
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.text.DateFormat
 
-private val Caption = S7.Caption
-private val Panel = S7.Panel
-private val Cyan = S7.Link
-private val Muted = S7.Muted
+private enum class Page(val title: String) {
+    Device("Device"), Archive("Archive"), Collections("Collections"), Notes("Field notes"),
+    Postcard("Weekly postcard"), DialIn("Dial-in"), History("Session history"), Wrapped("Wrapped"),
+    Settings("Settings"), Lighting("Lighting Desk"), DeviceSettings("Device settings"),
+    Links("Link monitor");
 
-/** Native Compose client. Every device write goes through the existing controller. */
+    val tab: Page get() = when (this) {
+        Device -> Device
+        Settings, Lighting, DeviceSettings, Links -> Settings
+        else -> Archive
+    }
+
+    val parent: Page get() = when (this) {
+        Device, Archive, Settings -> Device
+        Wrapped -> History
+        else -> tab
+    }
+}
+
+private data class Notice(val text: String, val undo: (() -> Unit)?)
+
 @Composable
-fun SubVentyScreen(controller: VentyController, permissions: Boolean, bluetoothOn: Boolean,
-    onGrant: () -> Unit, onEnableBluetooth: () -> Unit) {
+fun SubVentyScreen(
+    controller: VentyController,
+    permissions: Boolean,
+    bluetoothOn: Boolean,
+    onGrant: () -> Unit,
+    onEnableBluetooth: () -> Unit,
+) {
     val context = LocalContext.current
     val app = context.applicationContext as VentyApp
-    val scope = rememberCoroutineScope()
-    val activity = context.findActivity()
     val connection by controller.connection.collectAsStateWithLifecycle()
     val status by controller.status.collectAsStateWithLifecycle()
     val kind by controller.kind.collectAsStateWithLifecycle()
-    val info by controller.info.collectAsStateWithLifecycle()
-    val pump by controller.pump.collectAsStateWithLifecycle()
-    val ramp by controller.ramp.collectAsStateWithLifecycle()
+    val prefs by app.prefs.app.collectAsStateWithLifecycle()
+    val live by app.sessions.live.collectAsStateWithLifecycle()
     val entries by app.collections.entries.collectAsStateWithLifecycle()
     val paused by app.collections.paused.collectAsStateWithLifecycle()
     val comparisons by app.collections.comparisons.collectAsStateWithLifecycle()
     val putAwayWeek by app.collections.putAwayWeek.collectAsStateWithLifecycle()
-    val prefs by app.prefs.app.collectAsStateWithLifecycle()
-    val presets by app.prefs.presets.collectAsStateWithLifecycle()
-    val live by app.sessions.live.collectAsStateWithLifecycle()
-    val linkEvents by controller.linkEvents.collectAsStateWithLifecycle()
-    var page by rememberSaveable { mutableIntStateOf(0) }
-    var advanced by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val screenState = rememberSaveableStateHolder()
+    var page by rememberSaveable { mutableStateOf(Page.Device) }
     var window by rememberSaveable { mutableStateOf<String?>(null) }
-    var focusMode by rememberSaveable { mutableStateOf(false) }
-    var query by rememberSaveable { mutableStateOf("") }
+    var notice by remember { mutableStateOf<Notice?>(null) }
+    var showAll by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     var noteDraft by rememberSaveable { mutableStateOf("") }
-    var notice by remember { mutableStateOf("") }
-    var archivePage by rememberSaveable { mutableIntStateOf(0) }
-    var showAll by rememberSaveable { mutableStateOf(false) }
-    val connected = connection is ConnectionState.Connected
-    val enabled = connected && status != null
-    val demo = (connection as? ConnectionState.Connected)?.demo == true
-    val name = when (val c = connection) {
-        is ConnectionState.Connected -> c.name
-        is ConnectionState.Connecting -> c.name
-        is ConnectionState.Reconnecting -> c.name
-        else -> controller.lastDeviceName ?: kind.displayName
-    }
-    val key = if (demo) "demo:${kind.name}" else controller.lastDeviceAddress ?: kind.name
-    val archiveDevice = key.takeUnless { showAll }
+
+    val connected = connection as? ConnectionState.Connected
+    val activeConnection = connected != null || connection is ConnectionState.Reconnecting
+    val enabled = connected != null && status != null
+    val demo = connected?.demo == true
+    val fahrenheit = status?.fahrenheit == true
+    val deviceKey = if (demo) "demo:${kind.name}" else controller.lastDeviceAddress ?: kind.name
+    val archiveDevice = deviceKey.takeUnless { showAll }
     val archiveScope = archiveDevice?.let { "device:$it" } ?: "all"
     val archive = remember(entries, archiveDevice) {
         if (archiveDevice == null) entries else entries.filter { it.device == archiveDevice }
     }
+
+    val view = LocalView.current
+    val heaterOn = status?.heaterMode?.isHeating == true
+    DisposableEffect(heaterOn, prefs.keepScreenOn) {
+        view.keepScreenOn = heaterOn && prefs.keepScreenOn
+        onDispose { view.keepScreenOn = false }
+    }
+    val currentLive by rememberUpdatedState(live)
+    HeatHaptics(
+        heating = heaterOn && enabled,
+        ready = heaterOn && enabled && status?.setpointReached == true,
+        progress = { currentLive?.heatProgress() },
+        enabled = prefs.heatHaptics,
+    )
+
+    fun notify(text: String, undo: (() -> Unit)? = null) { notice = Notice(text, undo) }
+    LaunchedEffect(controller) { controller.notices.collect { notify(it) } }
+    LaunchedEffect(notice) { if (notice != null) { delay(5000); notice = null } }
+    BackHandler(enabled = page != Page.Device) { page = page.parent }
     fun editNote(entry: CollectionEntry) {
         editingId = entry.id
         noteDraft = entry.note
         window = "note"
     }
-    val filteredArchive = archive.filter { query.isBlank() || it.note.contains(query, ignoreCase = true) ||
-        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(it.startMs).contains(query, ignoreCase = true) }
-    val lastPage = ((filteredArchive.size - 1).coerceAtLeast(0) / 20)
-    val safePage = archivePage.coerceIn(0, lastPage)
-    val visibleEntries = filteredArchive.drop(safePage * 20).take(20)
-    val unit = Temperature.unit(status?.fahrenheit == true)
-    val view = LocalView.current
-    DisposableEffect(status?.heaterMode?.isHeating, prefs.keepScreenOn) {
-        view.keepScreenOn = status?.heaterMode?.isHeating == true && prefs.keepScreenOn
-        onDispose { view.keepScreenOn = false }
-    }
-    LaunchedEffect(controller) { controller.notices.collect { notice = it } }
-    LaunchedEffect(notice) { if (notice.isNotBlank()) { kotlinx.coroutines.delay(5000); notice = "" } }
-    fun navigate(index: Int) {
-        page = index
-        archivePage = 0
-        if (index == 8) window = "ramp"
-        if (index == 9) window = "settings"
-    }
+
     val exportArchive = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch {
             try {
                 withContext(Dispatchers.IO) {
                     val array = JSONArray()
-                    entries.forEach { e -> array.put(JSONObject().put("id", e.id).put("startMs", e.startMs)
-                        .put("endMs", e.endMs).put("device", e.device).put("reachedBandsC", JSONArray(e.bands)).put("note", e.note)) }
+                    entries.forEach { e ->
+                        array.put(JSONObject().put("id", e.id).put("startMs", e.startMs)
+                            .put("endMs", e.endMs).put("device", e.device)
+                            .put("reachedBandsC", JSONArray(e.bands)).put("note", e.note))
+                    }
                     val dialIn = JSONObject()
-                    comparisons.forEach { (scope, comparison) -> dialIn.put(scope, comparison.toJson()) }
+                    comparisons.forEach { (key, comparison) -> dialIn.put(key, comparison.toJson()) }
                     val json = JSONObject().put("schema", "subventy.archive").put("version", 1).put("paused", paused)
                         .put("entries", array).put("dialInComparisons", dialIn).toString(2)
                     context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(json) }
                         ?: error("Could not open the selected file")
                 }
-                notice = "Archive exported."
-            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled
-            } catch (_: Exception) { notice = "Could not save the archive. Please choose another file." }
+                notify("Archive exported.")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                notify("Could not save the archive. Choose another file.")
+            }
         }
     }
-    BackHandler(enabled = advanced || page != 0 || focusMode) {
-        when { advanced -> advanced = false; page != 0 -> page = 0; else -> focusMode = false }
-    }
+    fun export() { exportArchive.launch("subventy-archive.json") }
 
-    MaterialTheme(colorScheme = darkColorScheme(primary = Caption, onPrimary = Color.Black,
-        background = Color.Black, surface = Panel, onSurface = Color.White,
-        onBackground = Color.White, secondary = Cyan, outline = Caption),
-        shapes = Shapes(extraSmall = RoundedCornerShape(0.dp), small = RoundedCornerShape(0.dp), medium = RoundedCornerShape(0.dp),
-            large = RoundedCornerShape(0.dp), extraLarge = RoundedCornerShape(0.dp))) {
-        Column(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding().padding(5.dp)
-            .border(1.dp, Color.Gray)) {
-            Row(Modifier.fillMaxWidth().background(Caption).heightIn(min = 48.dp).padding(start = 7.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                SilverSeven(Modifier.size(20.dp))
-                Text("SubVenty", color = Color.White, fontSize = 14.sp,
-                    modifier = Modifier.weight(1f).padding(start = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                S7IconButton("Minimize app", Icons.Outlined.Minimize, { activity?.moveTaskToBack(true) })
-                S7IconButton(if (focusMode) "Restore sidebar" else "Expand workspace", Icons.Outlined.CropSquare, { focusMode = !focusMode })
-                S7IconButton("Close client window", Icons.Outlined.Close, { window = "close" })
-            }
-            Row(Modifier.fillMaxWidth().background(Panel).padding(6.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Label("destination:", 10, Color(0xFFC7D8E8))
-                    Text(name, color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth().border(1.dp, Color.Gray).background(Color(0xFF070B16)).padding(6.dp))
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) { Label("link:", 10); Label("BLE", 12) }
-                FlatButton(if (connected) "disconnect" else "connect", {
-                    if (connected) controller.disconnect()
-                    else { page = 0; if (permissions && bluetoothOn) controller.connectToLast() }
-                }, Modifier.widthIn(max = 110.dp))
-                Box(Modifier.size(42.dp).semantics { contentDescription = "About SubVenty" }
-                    .clickable(role = Role.Button) { window = "about" }, contentAlignment = Alignment.Center) {
-                    Text("S7", fontSize = 24.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace,
-                        letterSpacing = (-4).sp, color = Color(0xFF052D48), style = androidx.compose.ui.text.TextStyle(
-                            shadow = androidx.compose.ui.graphics.Shadow(Color(0xFF3975A6), androidx.compose.ui.geometry.Offset(1f, 1f), 1f)))
-                }
-            }
-            ClientToolbar(onNavigate = { window = "navigation" }, onPage = ::navigate,
-                onWindow = { window = it }, locateEnabled = connected && kind.hasVentyExtras)
-            if (advanced) {
-                FlatButton("« return to SubVenty", { advanced = false }, Modifier.fillMaxWidth())
-                Box(Modifier.weight(1f)) { DashboardScreen(controller, connection) }
-            } else {
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                    // Large fonts and narrow phones use a top menu, preserving readable content.
-                    val stacked = maxWidth < 350.dp || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
-                    Column(Modifier.fillMaxSize()) {
-                        Row(Modifier.weight(1f).fillMaxWidth().padding(5.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            if (!stacked && !focusMode) NavigationTree(page, ::navigate,
-                                Modifier.width(116.dp).fillMaxHeight().border(1.dp, Color(0xFF34343D)))
-                            Column(Modifier.weight(1f).fillMaxHeight()) {
-                                ClientWorkspace(page, Modifier.weight(1f)) {
-                                    Label(listOf("device information", "temperature control", "session archive", "collection browser",
-                                        "field notes", "weekly postcard", "local options", "link monitor", "ramp manager", "device properties", "dial-in", "lighting desk").getOrElse(page) { "device information" }, 13)
-                                    Label("${kind.displayName.lowercase()} / ${if (demo) "demo connection" else if (connected) "device connected" else "not connected"}", 10, Muted)
-                                    when (page) {
-                                        0 -> {
-                                            Label(when (val c = connection) {
-                                                is ConnectionState.Connected -> if (c.demo) "Demo device connected." else "Your device is connected."
-                                                is ConnectionState.Connecting -> "Connecting to ${c.name}…"
-                                                is ConnectionState.Reconnecting -> "Reconnecting / attempt ${c.attempt}"
-                                                is ConnectionState.Scanning -> if (c.active) "Looking for nearby devices…" else "Choose a device below."
-                                                is ConnectionState.Failed -> c.message
-                                                else -> "Waiting for your device."
-                                            })
-                                            when {
-                                                connected -> Unit
-                                                !permissions -> FlatButton("Allow Bluetooth access", onGrant)
-                                                !bluetoothOn -> FlatButton("Turn on Bluetooth", onEnableBluetooth)
-                                                !connected -> {
-                                                    FlatButton("Scan for devices", controller::startScan)
-                                                    (connection as? ConnectionState.Scanning)?.let { scan ->
-                                                        if (scan.active) FlatButton("Stop scanning", controller::stopScan)
-                                                        scan.found.forEach { found -> FlatButton("${found.name} / ${found.rssi} dBm", { controller.connect(found) }) }
-                                                    }
-                                                }
-                                            }
-                                            if (!connected && connection !is ConnectionState.Connecting && connection !is ConnectionState.Reconnecting) {
-                                                FlatButton("Try demo Venty", controller::startDemo)
-                                                FlatButton("Try demo Volcano", controller::startVolcanoDemo)
-                                            }
-                                            InfoLine("device", kind.displayName)
-                                            if (kind.hasBattery) InfoLine("battery", if (enabled) "${status!!.battery}%${if(status!!.charging) " / charging" else ""}" else "—")
-                                            InfoLine("firmware", info.firmware ?: "—")
-                                            InfoLine("heater", heaterLabel(status, connected))
-                                            if (kind.liveTemperature) InfoLine("live", status?.currentTenths?.let { "${Temperature.toDisplay(it, status?.fahrenheit == true)}°$unit" } ?: "—")
-                                            else Label("Venty reports target and readiness, not live temperature.", 11, Muted)
-                                            HeaterControl(status, enabled, controller)
-                                        }
-                                        1 -> {
-                                            Label("target controls")
-                                            val current = status?.targetTenths ?: 1850
-                                            InfoLine("base target", "${Temperature.toDisplay(current, status?.fahrenheit == true)}°$unit")
-                                            InfoLine("effective target", status?.let { "${Temperature.toDisplay(it.effectiveTargetTenths, it.fahrenheit)}°$unit" } ?: "—")
-                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                FlatButton("−", { controller.setTarget(Temperature.fromDisplay(Temperature.toDisplay(current, status?.fahrenheit == true) - 1, status?.fahrenheit == true)) }, Modifier.weight(1f), enabled && current > kind.minTarget)
-                                                FlatButton("+", { controller.setTarget(Temperature.fromDisplay(Temperature.toDisplay(current, status?.fahrenheit == true) + 1, status?.fahrenheit == true)) }, Modifier.weight(1f), enabled && current < kind.maxTarget)
-                                            }
-                                            Slider(value = current.toFloat().coerceIn(kind.minTarget.toFloat(), kind.maxTarget.toFloat()),
-                                                onValueChange = { controller.setTarget(it.toInt()) }, valueRange = kind.minTarget.toFloat()..kind.maxTarget.toFloat(), enabled = enabled,
-                                                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Target temperature"; stateDescription = "${Temperature.toDisplay(current, status?.fahrenheit == true)} degrees $unit" }, onValueChangeFinished = { notice = "Target sent to device." })
-                                            HeaterControl(status, enabled, controller)
-                                            if (kind.hasBoost) {
-                                                listOf("normal" to HeaterMode.On, "boost" to HeaterMode.Boost, "superboost" to HeaterMode.SuperBoost).forEach { (title, mode) ->
-                                                    FlatButton("$title / ${status?.let { Temperature.toDisplay(it.targetFor(mode), it.fahrenheit) } ?: "—"}°$unit", { controller.setHeaterMode(mode) }, enabled = enabled)
-                                                }
-                                                FlatButton("device properties / offsets…", { window = "settings" })
-                                            }
-                                            if (kind.hasPump) FlatButton(if (pump) "stop pump" else "start pump", { controller.setPump(!pump) }, enabled = enabled)
-                                            if (ramp != null) FlatButton("Stop active ramp", { controller.stopRamp() }, enabled = enabled)
-                                            presets.forEach { preset -> FlatButton("${preset.name} / ${Temperature.toDisplay(preset.tenthsC, status?.fahrenheit == true)}°$unit", { controller.setTarget(preset.tenthsC) }, enabled = enabled) }
-                                            FlatButton("ramp editor…", { window = "ramp" })
-                                            FlatButton("legacy controls", { advanced = true }, enabled = connection is ConnectionState.Connected || connection is ConnectionState.Reconnecting)
-                                        }
-                                        2 -> {
-                                            Label("local session archive")
-                                            ArchiveScope(showAll, { showAll = !showAll; archivePage = 0 }, demo)
-                                            if (archive.isEmpty()) Label("Your archive is empty. Completed sessions will appear here.", 12, Muted)
-                                            S7Input("find an entry / date or note", query, { query = it; archivePage = 0 })
-                                            visibleEntries.forEach { e ->
-                                                ArchiveRow(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(e.startMs),
-                                                    "${(e.endMs - e.startMs) / 60000} min / ${if(e.device.startsWith("demo:")) "demo" else "device"}" + if(e.note.isNotBlank()) " / ${e.note}" else "",
-                                                    { editNote(e) })
-                                            }
-                                            if (archive.isNotEmpty() && filteredArchive.isEmpty()) Label("No entries match this search.", 11, Muted)
-                                            if (live != null) Label("Session in progress. It will be archived after the heater is off.", 11, Muted)
-                                        }
-                                        3 -> {
-                                            ArchiveScope(showAll, { showAll = !showAll; archivePage = 0 }, demo)
-                                            CollectionBrowser(archive, if (showAll) 230 else kind.maxTarget / 10,
-                                                status?.fahrenheit == true, archiveScope, ::editNote)
-                                        }
-                                        4 -> {
-                                            ArchiveScope(showAll, { showAll = !showAll; archivePage = 0 }, demo)
-                                            Label("field notes / personal journal")
-                                            if (archive.isEmpty()) Label("Notes attach to completed sessions. Nothing to write until you have an entry.", 12, Muted)
-                                            S7Input("find a note / text or date", query, { query = it; archivePage = 0 })
-                                            visibleEntries.forEach { entry -> ArchiveRow(
-                                                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(entry.startMs),
-                                                entry.note.ifBlank { "no note yet / open to write one" },
-                                                { editNote(entry) }) }
-                                            if (archive.isNotEmpty() && filteredArchive.isEmpty()) Label("No notes match this search.", 11, Muted)
-                                        }
-                                        5 -> {
-                                            ArchiveScope(showAll, { showAll = !showAll; archivePage = 0 }, demo)
-                                            WeeklyPostcard(archive, status?.fahrenheit == true, putAwayWeek, app.collections::setPutAwayWeek)
-                                        }
-                                        6 -> {
-                                            Label("local options")
-                                            S7Check("do not track", paused) { value ->
-                                                app.sessions.setTrackingPaused(value)
-                                                if (!value) controller.reportedStatus.value?.takeIf { !it.heaterMode.isHeating }
-                                                    ?.let { app.sessions.onStatus(it, device = key) }
-                                                app.collections.setPaused(value)
-                                            }
-                                            Label(if (paused) "Collection paused. Your archive stays. Resume will wait until the heater is off; no backfill." else "Pause new automatic session and battery logs. Existing stamps, beads and notes stay.", 11, Muted)
-                                            InfoLine("sound", "off")
-                                            InfoLine("reminders", "none")
-                                            InfoLine("storage", "local")
-                                            FlatButton("client options…", { window = "client" })
-                                            FlatButton("lighting desk…", { navigate(11) })
-                                            FlatButton("device properties…", { window = "settings" })
-                                            FlatButton("export archive…", { window = null; exportArchive.launch("subventy-archive.json") })
-                                            Label("${AppUpdater.currentVersion(context)} / native client", 11, Muted)
-                                        }
-                                        7 -> {
-                                            Label("connection activity / newest first", 11, Muted)
-                                            if (linkEvents.isEmpty()) Label("No connection events yet.", 12, Muted)
-                                            linkEvents.forEach { event ->
-                                                Label(DateFormat.getTimeInstance(DateFormat.SHORT).format(event.atMs), 10, S7.Link)
-                                                Label(event.text, 11)
-                                            }
-                                        }
-                                        8 -> {
-                                            S7Group("temperature automation") {
-                                                Label(ramp?.let { "${it.phase.name.lowercase()} / ${it.targetC} °C" } ?: "No ramp is running.")
-                                                FlatButton("open ramp editor…", { window = "ramp" })
-                                                if (ramp != null) FlatButton("stop ramp", { controller.stopRamp() })
-                                                Label("Plans are edited and saved in the utility window. Heating starts only when you choose Start.", 11, Muted)
-                                            }
-                                        }
-                                        9 -> {
-                                            InfoLine("device", kind.displayName)
-                                            InfoLine("firmware", info.firmware ?: "—")
-                                            FlatButton("open device properties…", { window = "settings" })
-                                            if (kind.hasVentyExtras) FlatButton("find my device…", { window = "find" }, enabled = connected)
-                                        }
-                                        10 -> {
-                                            ArchiveScope(showAll, { showAll = !showAll; archivePage = 0 }, demo)
-                                            DialInPanel(archive, comparisons[archiveScope], archiveScope, status?.fahrenheit == true) { draft ->
-                                                app.collections.saveComparison(archiveDevice, draft).also { saved ->
-                                                    notice = if (saved) "Comparison saved." else "A selected session is no longer available."
-                                                }
-                                            }
-                                        }
-                                        11 -> LightingDesk(app.lighting, paused)
+    MaterialTheme(colorScheme = darkColorScheme(
+        primary = Deck.Amber, onPrimary = Deck.Ink, background = S7.Workspace, surface = S7.Panel,
+        onSurface = S7.Text, onBackground = S7.Text, secondary = Deck.Amber, outline = S7.Border,
+    )) {
+        Column(
+            Modifier.fillMaxSize().background(Deck.Graphite).safeDrawingPadding(),
+        ) {
+            InstrumentHeader(connection, status, kind, controller)
+            if (page != Page.Device) DeckStripe()
+            Box(Modifier.weight(1f).fillMaxWidth().background(if (page == Page.Device) Deck.Ivory else S7.Workspace)) {
+                screenState.SaveableStateProvider(page.name) {
+                    when (page) {
+                        Page.Device -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                            val deviceStatus = status
+                            if (deviceStatus != null && activeConnection) {
+                                InstrumentDashboard(app, controller, deviceStatus, kind, enabled, demo, ::notify)
+                            } else InstrumentConnection(controller, connection, permissions, bluetoothOn, onGrant, onEnableBluetooth)
+                        }
+                        Page.DeviceSettings -> FullDeviceSettings(app, controller, status.takeIf { enabled }, kind,
+                            onFind = { window = "find" }, onBack = { page = Page.Settings })
+                        Page.History -> {
+                            val history by app.sessions.history.collectAsStateWithLifecycle()
+                            val lifetime by app.sessions.lifetimePuffs.collectAsStateWithLifecycle()
+                            HistoryScreen(history = history, lifetimePuffs = lifetime, fahrenheit = fahrenheit,
+                                onClear = app.sessions::clearHistory, onWrapped = { page = Page.Wrapped },
+                                onBack = { page = Page.Archive })
+                        }
+                        Page.Wrapped -> {
+                            val history by app.sessions.history.collectAsStateWithLifecycle()
+                            WrappedScreen(history = history, fahrenheit = fahrenheit, onBack = { page = Page.History },
+                                range = kind.targetRange)
+                        }
+                        else -> Column(
+                            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            if (page != page.tab) S7Button("‹ ${page.parent.title}", { page = page.parent })
+                            S7Text(page.title, 22)
+                            when (page) {
+                                Page.Archive -> {
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        S7Button("Collections", { page = Page.Collections }, Modifier.weight(1f))
+                                        S7Button("Field notes", { page = Page.Notes }, Modifier.weight(1f))
                                     }
-                                    if ((page == 2 || page == 4) && filteredArchive.size > 20) {
-                                        Label("page ${safePage + 1} / ${lastPage + 1}", 11, Muted)
-                                        FlatButton("newer entries", { archivePage = safePage - 1 }, enabled = safePage > 0)
-                                        FlatButton("older entries", { archivePage = safePage + 1 }, enabled = safePage < lastPage)
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        S7Button("Dial-in", { page = Page.DialIn }, Modifier.weight(1f))
+                                        S7Button("Postcard", { page = Page.Postcard }, Modifier.weight(1f))
+                                    }
+                                    S7Button("Session history and Wrapped", { page = Page.History }, Modifier.fillMaxWidth())
+                                    ArchiveScope(showAll, demo) { showAll = !showAll }
+                                    ArchiveList(archive, notes = false, scope = archiveScope, onNote = ::editNote)
+                                }
+                                Page.Notes -> {
+                                    ArchiveScope(showAll, demo) { showAll = !showAll }
+                                    ArchiveList(archive, notes = true, scope = archiveScope, onNote = ::editNote)
+                                }
+                                Page.Collections -> {
+                                    ArchiveScope(showAll, demo) { showAll = !showAll }
+                                    CollectionBrowser(archive, if (showAll) 230 else kind.maxTarget / 10,
+                                        fahrenheit, archiveScope, ::editNote)
+                                }
+                                Page.Postcard -> {
+                                    ArchiveScope(showAll, demo) { showAll = !showAll }
+                                    WeeklyPostcard(archive, fahrenheit, putAwayWeek, app.collections::setPutAwayWeek)
+                                }
+                                Page.DialIn -> {
+                                    ArchiveScope(showAll, demo) { showAll = !showAll }
+                                    DialInPanel(archive, comparisons[archiveScope], archiveScope, fahrenheit) { draft ->
+                                        app.collections.saveComparison(archiveDevice, draft).also { saved ->
+                                            notify(if (saved) "Comparison saved." else "A selected session is unavailable.")
+                                        }
                                     }
                                 }
-                                FlatButton(if (page == 0) "temperature controls »" else "« device information", { page = if (page == 0) 1 else 0 }, Modifier.fillMaxWidth())
+                                Page.Settings -> {
+                                    S7Button("Device settings and pairing", { page = Page.DeviceSettings }, Modifier.fillMaxWidth())
+                                    if (kind.hasVentyExtras) S7Button("Find my device", { window = "find" }, Modifier.fillMaxWidth(), enabled)
+                                    S7Button("Link monitor", { page = Page.Links }, Modifier.fillMaxWidth())
+                                    S7Button("Lighting Desk", { page = Page.Lighting }, Modifier.fillMaxWidth())
+                                    S7Button("Client options", { window = "client" }, Modifier.fillMaxWidth())
+                                    S7Check("Do not track", paused) { pause ->
+                                        app.sessions.setTrackingPaused(pause)
+                                        if (!pause) controller.reportedStatus.value?.takeIf { !it.heaterMode.isHeating }
+                                            ?.let { app.sessions.onStatus(it, device = deviceKey) }
+                                        app.collections.setPaused(pause)
+                                    }
+                                    S7Text(if (paused) "Automatic collection paused. Recording resumes after the heater is off."
+                                        else "Pause automatic session and battery logs and reactive room lighting.", 12, S7.Muted)
+                                    S7Button("Export archive", ::export, Modifier.fillMaxWidth())
+                                    S7Text("SubVenty ${AppUpdater.currentVersion(context)}", 11, S7.Muted)
+                                }
+                                Page.Lighting -> LightingDesk(app.lighting, paused)
+                                Page.Links -> {
+                                    val events by controller.linkEvents.collectAsStateWithLifecycle()
+                                    if (events.isEmpty()) S7Text("No connection events yet.", 12, S7.Muted)
+                                    events.forEach { event ->
+                                        S7Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(event.atMs), 11, S7.Link)
+                                        S7Text(event.text)
+                                    }
+                                }
+                                else -> Unit
                             }
                         }
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().background(Panel).semantics { liveRegion = LiveRegionMode.Polite }.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                Box(Modifier.border(1.dp, S7.Border).padding(4.dp)) { Label(if (demo) "demo" else if (connected) "online" else "idle", 10) }
-                Box(Modifier.border(1.dp, S7.Border).padding(4.dp)) { Label("0.4.0", 10) }
-                Box(Modifier.weight(1f).border(1.dp, S7.Border).padding(4.dp)) { Label(notice.ifBlank { heaterLabel(status, connected) }, 10) }
+            notice?.let { message ->
+                Row(
+                    Modifier.fillMaxWidth().background(Deck.Graphite).semantics { liveRegion = LiveRegionMode.Polite }
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    DeckLabel(message.text, 11, Deck.Ivory, Modifier.weight(1f))
+                    message.undo?.let { undo ->
+                        DeckKey("Undo", { undo(); notice = null }, finish = KeyFinish.Graphite)
+                    }
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(7.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                listOf(Page.Device, Page.Archive, Page.Settings).forEach { tab ->
+                    DeckKey(tab.title, { page = tab }, Modifier.weight(1f), active = page.tab == tab, finish = KeyFinish.Graphite)
+                }
             }
         }
+
         when (window) {
-            "about" -> UtilityWindow("about SubVenty", { window = null }) {
-                SilverSeven(Modifier.fillMaxWidth().height(115.dp))
-                Label("SubVenty ${AppUpdater.currentVersion(context)}", 16)
-                Label("Personal thermal control. A native companion for Venty and Volcano Hybrid.")
-                Label("Interface study after the SubSeven client. Your archive and notes remain on this phone.", 11, Muted)
-                FlatButton("OK", { window = null })
-            }
-            "navigation" -> UtilityWindow("navigator", { window = null }) {
-                NavigationTree(page, { index -> window = null; navigate(index) }, Modifier.fillMaxWidth().heightIn(max = 430.dp))
-            }
-            "ramp" -> RampEditor(app, controller, enabled, { window = null }, { notice = it })
-            "settings" -> DeviceProperties(app, controller, enabled, { window = null })
-            "find" -> LocateDevice(controller, connected && kind.hasVentyExtras, { window = null })
-            "client" -> ClientOptions(app, { window = null; exportArchive.launch("subventy-archive.json") }, { window = null })
-            "note" -> UtilityWindow("field note", { window = null }) {
-                entries.firstOrNull { it.id == editingId }?.let { entry ->
-                    Label(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(entry.startMs), 11, Muted)
-                    S7Input("one line / optional", noteDraft, { noteDraft = it.take(120) })
-                    Label("${noteDraft.length} / 120", 10, Muted)
-                    FlatButton("save note", { app.collections.saveNote(entry.id, noteDraft); window = null; notice = "Note saved." })
-                } ?: Label("This entry is no longer available.")
-                FlatButton("cancel", { window = null })
-            }
-            "close" -> UtilityWindow("close client", { window = null }) {
-                Label("Close the application window?")
-                Label("Heating and active ramps continue in the background. Use heater off in the control panel to stop heating.", 11, Muted)
-                FlatButton("close app window", { activity?.finish() })
-                FlatButton("keep open", { window = null })
+            "find" -> LocateDevice(controller, enabled && kind.hasVentyExtras) { window = null }
+            "client" -> ClientOptions(app, { window = null; export() }, { window = null })
+            "note" -> UtilityWindow("Field note", { window = null }) {
+                val entry = entries.firstOrNull { it.id == editingId }
+                if (entry == null) S7Text("This entry is no longer available.")
+                else {
+                    S7Text(entryDate(entry))
+                    S7Input("One line / optional", noteDraft, { noteDraft = it.take(120) })
+                    S7Text("${noteDraft.length} / 120", 10, S7.Muted)
+                    S7Button("Save note", {
+                        app.collections.saveNote(entry.id, noteDraft)
+                        window = null
+                        notify("Note saved.")
+                    })
+                }
             }
         }
     }
 }
 
-@Composable private fun Label(text: String, size: Int = 12, color: Color = S7.Text) { S7Text(text, size, color) }
-@Composable private fun InfoLine(label: String, value: String) {
-    if (androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f) {
-        Column { Label(label, 11, Muted); Label(value, 12) }
-    } else Row(Modifier.fillMaxWidth().heightIn(min = 26.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
-        Text(value, color = S7.Text, fontSize = 12.sp, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+@Composable
+private fun InstrumentHeader(
+    connection: ConnectionState,
+    status: VentyStatus?,
+    kind: DeviceKind,
+    controller: VentyController,
+) {
+    var menu by remember { mutableStateOf(false) }
+    val connected = connection as? ConnectionState.Connected
+    val detail = when (connection) {
+        is ConnectionState.Connected -> if (connection.demo) connection.name else "${kind.displayName} connected"
+        is ConnectionState.Connecting -> "Connecting…"
+        is ConnectionState.Reconnecting -> "Reconnecting…"
+        is ConnectionState.Scanning -> if (connection.active) "Scanning…" else "Select a device"
+        else -> "Disconnected"
+    }
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 12.dp, end = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        DeckLabel("SUBVENTY", 17, Deck.Ivory)
+        DeckLabel(detail, 11, Deck.Ivory, Modifier.weight(1f))
+        if (status != null && connected != null && kind.hasBattery) {
+            DeckLabel("${status.battery}%${if (status.charging) " + " else ""}", 12, Deck.Ivory)
+        }
+        if (connected != null || connection is ConnectionState.Reconnecting) {
+            Box {
+                DeckKey("⋯", { menu = true }, Modifier.width(48.dp), finish = KeyFinish.Graphite,
+                    description = "Device connection menu")
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { Text("Disconnect") }, onClick = { menu = false; controller.disconnect() })
+                    if (connected?.demo != true) DropdownMenuItem(
+                        text = { Text("Forget device") }, onClick = { menu = false; controller.forgetDevice() },
+                    )
+                }
+            }
+        }
     }
 }
-@Composable private fun FlatButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
-    enabled: Boolean = true) { S7Button(text, onClick, modifier, enabled) }
 
-private fun heaterLabel(s: VentyStatus?, connected: Boolean): String = when {
-    !connected -> "device disconnected"
-    s == null -> "waiting for device status"
-    !s.heaterMode.isHeating -> "heater off"
-    s.setpointReached -> "target reached"
-    else -> "heating"
+@Composable
+private fun InstrumentConnection(
+    controller: VentyController,
+    connection: ConnectionState,
+    permissions: Boolean,
+    bluetoothOn: Boolean,
+    onGrant: () -> Unit,
+    onEnableBluetooth: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        DeckLCD {
+            DeckLabel("DEVICE LINK", 11)
+            DeckLabel(when (connection) {
+                is ConnectionState.Connecting -> "Connecting to ${connection.name}"
+                is ConnectionState.Connected -> "Waiting for device status"
+                is ConnectionState.Reconnecting -> "Reconnecting to ${connection.name}"
+                is ConnectionState.Scanning -> if (connection.active) "Scanning for devices…" else "Select your device"
+                is ConnectionState.Failed -> connection.message
+                else -> "Connect a device"
+            }, 20)
+        }
+        when {
+            connection is ConnectionState.Connecting || connection is ConnectionState.Connected ||
+                connection is ConnectionState.Reconnecting ->
+                DeckKey("Cancel connection", controller::disconnect, Modifier.fillMaxWidth())
+            !permissions -> DeckKey("Allow Bluetooth access", onGrant, Modifier.fillMaxWidth())
+            !bluetoothOn -> DeckKey("Turn on Bluetooth", onEnableBluetooth, Modifier.fillMaxWidth())
+            else -> {
+                val scan = connection as? ConnectionState.Scanning
+                if (scan?.active == true) DeckKey("Stop scanning", controller::stopScan, Modifier.fillMaxWidth())
+                else DeckKey("Scan for devices", controller::startScan, Modifier.fillMaxWidth(), finish = KeyFinish.Rust)
+                scan?.found?.forEach { device ->
+                    DeckKey("${device.name} · ${device.rssi} dBm", { controller.connect(device) }, Modifier.fillMaxWidth())
+                }
+            }
+        }
+        if (connection !is ConnectionState.Connecting && connection !is ConnectionState.Connected &&
+            connection !is ConnectionState.Reconnecting) {
+            DeckKey("Try demo Venty", controller::startDemo, Modifier.fillMaxWidth())
+            DeckKey("Try demo Volcano", controller::startVolcanoDemo, Modifier.fillMaxWidth())
+        }
+    }
 }
-@Composable private fun HeaterControl(s: VentyStatus?, enabled: Boolean, controller: VentyController) {
-    FlatButton(if (s?.heaterMode?.isHeating == true) "turn heater off" else "turn heater on",
-        { controller.setHeaterMode(if (s?.heaterMode?.isHeating == true) HeaterMode.Off else HeaterMode.On) },
-        Modifier.fillMaxWidth(), enabled)
+
+@Composable
+private fun FullDeviceSettings(
+    app: VentyApp,
+    controller: VentyController,
+    status: VentyStatus?,
+    kind: DeviceKind,
+    onFind: () -> Unit,
+    onBack: () -> Unit,
+) {
+    val info by controller.info.collectAsStateWithLifecycle()
+    val settings by controller.deviceSettings.collectAsStateWithLifecycle()
+    val prefs by app.prefs.app.collectAsStateWithLifecycle()
+    val events by controller.linkEvents.collectAsStateWithLifecycle()
+    SettingsScreen(
+        kind = kind, status = status, deviceSettings = settings, firmware = info.firmware,
+        deviceName = controller.lastDeviceName, appPrefs = prefs, linkEvents = events,
+        onFahrenheit = controller::setFahrenheit, onEcoCharge = controller::setEcoCharge,
+        onEcoVoltage = controller::setEcoVoltage, onBoostVisualization = controller::setBoostVisualization,
+        onBrightness = controller::setBrightness, onVibration = controller::setVibration,
+        onBoostTimeoutDisabled = controller::setBoostTimeoutDisabled, onFindMy = onFind,
+        deviceAddress = controller.lastDeviceAddress, onPairingHold = controller::holdForPairing,
+        onPairingDone = controller::releasePairingHold, onAppPrefs = app.prefs::setApp, onBack = onBack,
+    )
 }
-@Composable private fun ArchiveScope(all: Boolean, onToggle: () -> Unit, demo: Boolean) {
-    Label(if (all) "all saved devices / includes demo entries" else if (demo) "demo archive / simulated sessions" else "this device's archive", 11, Muted)
-    FlatButton(if (all) "show this device" else "show all devices", onToggle)
+
+@Composable
+private fun ArchiveScope(all: Boolean, demo: Boolean, onToggle: () -> Unit) {
+    S7Text(when {
+        all -> "All archives / includes demo sessions"
+        demo -> "Demo archive"
+        else -> "This device’s archive"
+    }, 11, S7.Muted)
+    S7Button(if (all) "Show this device" else "Show all devices", onToggle)
 }
-private fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
-    is android.app.Activity -> this
-    is android.content.ContextWrapper -> baseContext.findActivity()
-    else -> null
+
+@Composable
+private fun ArchiveList(archive: List<CollectionEntry>, notes: Boolean, scope: String, onNote: (CollectionEntry) -> Unit) {
+    var query by rememberSaveable(scope) { mutableStateOf("") }
+    var page by rememberSaveable(scope) { mutableIntStateOf(0) }
+    val found = remember(archive, query) {
+        if (query.isBlank()) archive else archive.filter {
+            it.note.contains(query, ignoreCase = true) || entryDate(it).contains(query, ignoreCase = true)
+        }
+    }
+    val last = (found.size - 1).coerceAtLeast(0) / 20
+    val current = page.coerceAtMost(last)
+    S7Input(if (notes) "Find a note" else "Find a session", query, { query = it; page = 0 })
+    if (found.isEmpty()) S7Text(
+        if (archive.isEmpty()) "Completed sessions will appear here." else "No entries match this search.",
+        12, S7.Muted,
+    )
+    found.drop(current * 20).take(20).forEach { entry ->
+        val summary = if (notes) entry.note.ifBlank { "No note yet" } else
+            "${(entry.endMs - entry.startMs) / 60_000} min · ${if (entry.device.startsWith("demo:")) "Demo" else "Device"}" +
+                entry.note.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
+        ArchiveRow(entryDate(entry), summary, { onNote(entry) })
+    }
+    if (last > 0) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        S7Button("Newer", { page = current - 1 }, enabled = current > 0)
+        S7Button("Older", { page = current + 1 }, enabled = current < last)
+    }
 }
+
+private fun entryDate(entry: CollectionEntry): String =
+    DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(entry.startMs)

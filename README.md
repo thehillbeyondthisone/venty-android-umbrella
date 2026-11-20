@@ -1,27 +1,27 @@
 # SubVenty
 
-A native Android companion for the Storz & Bickel Venty and Volcano Hybrid, with the visual language of the SubSeven clients. Built on [orth4x0r/venty-android](https://github.com/orth4x0r/venty-android).
+A native Android companion for the Storz & Bickel Venty and Volcano Hybrid, with an amber LCD, graphite shell and tactile cassette-era controls. Built on [orth4x0r/venty-android](https://github.com/orth4x0r/venty-android).
 
-This branch contains the **native Android app**, plus the earlier browser design studies. The Android interface is Kotlin/Jetpack Compose, not a WebView.
+This branch contains the **native Android app**, plus the earlier browser design studies. The Android interface uses Kotlin and Jetpack Compose.
 
 ## Try the Android app
 
-1. On your Android phone, [download SubVenty preview 4](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview4/subventy-0.4.0-preview4.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
+1. On your Android phone, [download SubVenty preview 5](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview5/subventy-0.4.0-preview5.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
 2. Open the downloaded APK. Android may ask you to allow installs from the browser or Files app you used.
 3. Launch **SubVenty**. Try **Demo Venty** or **Demo Volcano** first. Demo entries are labeled and stored separately from hardware entries.
 4. For a real device, allow Nearby devices/Bluetooth access, enable Bluetooth, select **Scan for devices**, then select your Venty or Volcano.
 
-The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview4) contains the APK and checksum.
+The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview5) contains the APK and checksum.
 
-Preview 4 is version **0.4.0-subventy.4** (code 12). Install it over an earlier preview to retain your local archive and preferences.
+Preview 5 is version **0.4.0-subventy.5** (code 13). Install it over an earlier preview to retain your local archive and preferences.
 
 Android 8.0+ is required. This preview uses a separate application ID (`io.github.thehillbeyondthisone.subventy`), so it can coexist with the upstream Venty app. Close/disconnect the other controller before connecting SubVenty to the same physical device.
 
 You do **not** need to merge the PR, install Android Studio, or build anything yourself to install the APK. On GitHub, HTML files show their source; they do not launch the native app.
 
-## Room lighting in preview 4
+## Room lighting
 
-The **Lighting Desk** applies a saved look to your Home Assistant lights during heat-up, at temperature, during an estimated Venty draw, and at session end. Edit and share named profiles with their own colors, brightness and fades. A Home Assistant blueprint handles the light selection. [Set up Govee room lighting](docs/home-assistant/README.md).
+**Settings → Lighting Desk** applies a saved look to your Home Assistant lights during heat-up, at temperature, during an estimated Venty draw, and at session end. Edit and share named profiles with their own colors, brightness and fades. A Home Assistant blueprint handles the light selection. [Set up Govee room lighting](docs/home-assistant/README.md).
 
 ## Session collections
 
@@ -30,26 +30,19 @@ The **Lighting Desk** applies a saved look to your Home Assistant lights during 
 - **Dial-in** compares two or three distinct reached bands from past sessions. Choose the session for each band, add optional impressions and a short note, and save one editable comparison for the current archive view. Comparisons are included in JSON export.
 - **Weekly postcard** shows the recorded session count and the most frequently recorded band. Swipe sideways or use the button to put it away. The app remembers the dismissal for the week and lets you reopen it.
 
-## Device controls and local archive
+## Device controls
 
-- Lavender caption strip, blue connection row and icon toolbar, expandable tree navigation, charcoal workspace, embossed S7 badge, silver pixel-edged seven and segmented status strip. The layout follows the newer user-supplied SubSeven/Legacy references; the earlier 1999 browser reconstruction remains available separately.
-- Matching square utility windows for ramps, device properties, Find My, note editing, client options, navigation and About. The title-bar controls minimize the app, expand the workspace and close the client window.
-- Native permission, scan, connect, reconnect and disconnect flows using the existing BLE controller.
-- Device-confirmed target/readiness, Venty battery, and Volcano live temperature.
-- Heater, bounded temperature adjustments, presets, Venty normal/Boost/Superboost, and Volcano pump.
-- Themed ramp editor with validated drafts, saved plan and profile loading. Loading/saving a plan leaves heating unchanged; **start ramp and heater** is a separate explicit action.
-- Themed device properties for temperature units, boost offsets, eco settings, brightness, vibration and boost timeout where supported. Find My provides Bluetooth signal readings and the existing vibration/flash command. A link monitor displays actual controller events.
-- Searchable session and note archives, a dedicated note editor, and JSON export through Android's save-file picker. Export includes all devices, demo records and notes. Import is not implemented.
-- **Legacy controls** retains the original advanced dashboard for additional tools and settings. That panel keeps its earlier styling.
-- Permanent, local per-device collection archive: reached 5 °C Atlas bands, an Ember Trail, editable one-line notes, and a dismissible weekly postcard.
-- **Do not track** pauses new session and battery logs while preserving existing notes/stamps/beads. Resume does not backfill a paused period; a hot session interrupted by a pause is excluded. Device controls continue working. On a new connection, recording waits for an observed heater-off state.
-- Demo sessions have separate archive identities. No synthetic example collections are preloaded into the native app.
+- The fixed header and three tabs frame a scrollable Device dashboard. The LCD displays Venty's effective target and readiness, or a live Volcano Hybrid reading with a separate target when available.
+- Use the linear target slider, holdable plus/minus keys, preset keys, and dedicated heater key. Venty adds Normal, Boost and Superboost. Volcano Hybrid adds a pump key. Long-press a preset to remove it and tap **Undo** to restore it.
+- Expand **Ramp session** to edit a Simple or Steps plan and load saved profiles. Start is an explicit action. While running, the LCD shows the program and the next step or hold countdown. **Stop ramp** leaves the heater setting in place. **Turn heater off** cancels the ramp and sends the heater-off command.
+- Scroll down for battery history and estimates, boost offsets, firmware and heater time. The connection menu offers Disconnect and Forget device.
+- **Settings** opens device properties, pairing, Find My, link activity, client options, Lighting Desk and JSON export. **Do not track** pauses session and battery logging and automatic lighting.
 
-Atlas stamps use **device-reported reached targets**, not optimistic slider edits. Venty does not report live temperature, so the interface never presents a simulated measurement as a real one. Existing collection records survive the rolling 500-entry recent-session history limit. Notes and collections persist across app restarts; clearing Android app data/uninstalling deletes this local data.
+Archive search and Field Notes display local records. Device-reported reached targets stamp the Atlas. The collection archive retains entries beyond the rolling 500-entry recent-history limit. Demo entries have separate archives. Clearing the app's Android storage removes local data.
 
 ## Scope and validation
 
-This is a native test APK. Compilation, **121 unit tests**, and Android lint pass locally. The previous preview's device controls, native utility windows and archive export were exercised on Android 15. [Preview 2 screenshots and results](docs/native-preview/iteration2/README.md).
+This is a native test APK. The debug build, unit tests and Android lint run locally. The Android emulator uses the built-in device simulators. Physical Venty and Volcano behavior needs a hardware check.
 
 The APK is debug-signed for personal testing. Keep the signing key for future compatible updates; do not publish it in the repository. The in-app updater points to **this fork**, not the upstream release feed. Draft/prerelease builds are installed manually.
 
@@ -75,4 +68,4 @@ The APK is `app/build/outputs/apk/debug/app-debug.apk`. The existing GitHub Acti
 
 ## Credits and license
 
-The original Venty/Volcano controller, services, session tools and advanced interface are from [orth4x0r/venty-android](https://github.com/orth4x0r/venty-android), under the [MIT license](LICENSE). The SubVenty UI is an independent implementation of the referenced historical visual design; no SubSeven runtime is included. Not affiliated with Storz & Bickel. Device names are their trademarks.
+The original Venty/Volcano controller, services, session tools and advanced interface are from [orth4x0r/venty-android](https://github.com/orth4x0r/venty-android), under the [MIT license](LICENSE). The SubVenty interface is an independent cassette-era design. Not affiliated with Storz & Bickel. Device names are their trademarks.

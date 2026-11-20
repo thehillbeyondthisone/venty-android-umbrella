@@ -175,9 +175,9 @@ class PrefsStore(context: Context) {
         sp.edit().putString("presets", arr.toString()).apply()
     }
 
-    private companion object {
+    internal companion object {
         const val MAX_PRESETS = 8
         const val MAX_RAMP_PROFILES = 8
-        val DEFAULT_PRESETS = listOf(Preset("Flavor", 1800), Preset("Balanced", 1900), Preset("Clouds", 2000))
+        private val DEFAULT_PRESETS = listOf(Preset("Flavor", 1800), Preset("Balanced", 1900), Preset("Clouds", 2000))
     }
 }
