@@ -29,7 +29,7 @@ On Venty, scroll to **Draw tray** and pick Amber, Teal, Rose, Violet or Unassign
 
 **Tray** shows the latest balls in order. **By person** groups all the finished draws by color and shows count, total time and average duration. Color choices are per-session seats. When the session ends, the seat resets and its balls are available under **Archive → Draw sessions** and in JSON export.
 
-Venty estimates draw timing from its shutoff timer, so durations are approximate. Closely spaced resets on the same seat may become one draw. A seat handoff preserves separate draws when the timer reports an end and a new start. **Do not track** pauses collection. Try **Simulate draw** in Demo Venty after it reaches its target.
+Venty estimates draw timing from its shutoff timer, so durations are approximate. Closely spaced resets on the same seat may become one draw. A seat handoff preserves separate draws when the timer reports an end and a new start. **Do not track** pauses collection. Try **Simulate draw** in Demo Venty after it reaches its target. [Draw tray screenshots and verification](docs/native-preview/iteration6/README.md).
 
 ## Session collections
 
