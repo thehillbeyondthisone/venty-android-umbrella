@@ -6,14 +6,14 @@ This branch contains the **native Android app**, plus the earlier browser design
 
 ## Try the Android app
 
-1. On your Android phone, [download SubVenty preview 6](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview6/subventy-0.4.0-preview6.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
+1. On your Android phone, download SubVenty preview 7. If GitHub shows the file page, tap **Download raw file**. [Download the APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview7/subventy-0.4.0-preview7.apk?raw=true)
 2. Open the downloaded APK. Android may ask you to allow installs from the browser or Files app you used.
 3. Launch **SubVenty**. Try **Demo Venty** or **Demo Volcano** first. Demo entries are labeled and stored separately from hardware entries.
 4. For a real device, allow Nearby devices/Bluetooth access, enable Bluetooth, select **Scan for devices**, then select your Venty or Volcano.
 
-The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview6) contains the APK and checksum.
+The APK and checksum live on a separate branch. [Preview 7 build files](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview7)
 
-Preview 6 is version **0.4.0-subventy.6** (code 14). Install it over an earlier preview to retain your local archive and preferences.
+Preview 7 is version **0.4.0-subventy.7** (code 15). Install it over an earlier preview to retain your local archive and preferences.
 
 Android 8.0+ is required. This preview uses a separate application ID (`io.github.thehillbeyondthisone.subventy`), so it can coexist with the upstream Venty app. Close/disconnect the other controller before connecting SubVenty to the same physical device.
 
@@ -23,13 +23,15 @@ You do **not** need to merge the PR, install Android Studio, or build anything y
 
 **Settings → Lighting Desk** applies a saved look to your Home Assistant lights during heat-up, at temperature, during an estimated Venty draw, and at session end. Edit and share named profiles with their own colors, brightness and fades. A Home Assistant blueprint handles the light selection. [Set up Govee room lighting](docs/home-assistant/README.md).
 
-## Draw tray
+## Session objects
 
-On Venty, scroll to **Draw tray** and pick Amber, Teal, Rose, Violet or Unassigned. The selected color attaches when a draw starts. The ball grows while the draw is detected and drops into the tray when it ends.
+On Venty, open **Device → Session objects** and pick Amber, Teal, Rose, Violet or Unassigned under **Next draw**. The app assigns the selected color when a draw starts.
 
-**Tray** shows the latest balls in order. **By person** groups all the finished draws by color and shows count, total time and average duration. Color choices are per-session seats. When the session ends, the seat resets and its balls are available under **Archive → Draw sessions** and in JSON export.
+- **Resin Window** grows a drop during each draw and sets it into the mosaic when the draw ends.
+- **Kinetic Mobile** hangs a glass bead from the person's branch. The brass counterweight shifts after the bead lands. Pull a bead sideways and release, or select it and press **Pluck**.
+- **By person** shows draw count, total time and average duration. Tap a piece in either sculpture to inspect its duration, or use the draw picker. **Replay draw** previews the selected piece's arrival.
 
-Venty estimates draw timing from its shutoff timer, so durations are approximate. Closely spaced resets on the same seat may become one draw. A seat handoff preserves separate draws when the timer reports an end and a new start. **Do not track** pauses collection. Try **Simulate draw** in Demo Venty after it reaches its target. [Draw tray screenshots and verification](docs/native-preview/iteration6/README.md).
+Both sculptures open completed sessions under **Archive → Draw sessions**. Finished draws are included in JSON export. Venty estimates draw timing from its shutoff timer. Closely spaced resets on the same seat may become one draw. **Do not track** pauses collection. Try **Simulate draw** in Demo Venty after it reaches its target. [Preview 7 screenshots and verification](docs/native-preview/iteration7/README.md)
 
 ## Session collections
 
@@ -50,7 +52,7 @@ Archive search and Field Notes display local records. Device-reported reached ta
 
 ## Scope and validation
 
-This is a native test APK. The debug build, unit tests and Android lint run locally. The Android emulator uses the built-in device simulators. Physical Venty and Volcano behavior needs a hardware check. [Preview 5 screenshots and test results](docs/native-preview/iteration5/README.md).
+This is a native test APK. The debug build, unit tests and Android lint run locally. The Android emulator uses the built-in device simulators. Physical Venty and Volcano behavior needs a hardware check. [Preview 7 test results](docs/native-preview/iteration7/README.md)
 
 The APK is debug-signed for personal testing. Keep the signing key for future compatible updates; do not publish it in the repository. The in-app updater points to **this fork**, not the upstream release feed. Draft/prerelease builds are installed manually.
 

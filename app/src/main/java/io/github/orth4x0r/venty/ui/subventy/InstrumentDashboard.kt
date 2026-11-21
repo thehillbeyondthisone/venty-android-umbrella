@@ -22,10 +22,10 @@ import io.github.orth4x0r.venty.ble.*
 import io.github.orth4x0r.venty.prefs.BatterySample
 import io.github.orth4x0r.venty.prefs.Preset
 import io.github.orth4x0r.venty.prefs.PrefsStore
+import io.github.orth4x0r.venty.session.DrawTray
 import io.github.orth4x0r.venty.session.LiveSession
 import io.github.orth4x0r.venty.session.estimateBatteryForecast
 import io.github.orth4x0r.venty.ui.Temperature
-import io.github.orth4x0r.venty.ui.session.DrawTimerBuzz
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -37,14 +37,15 @@ internal fun InstrumentDashboard(
     kind: DeviceKind,
     enabled: Boolean,
     demo: Boolean,
+    draws: DrawTray,
     trackingPaused: Boolean,
+    onDraws: () -> Unit,
     notify: (String, (() -> Unit)?) -> Unit,
 ) {
     val info by controller.info.collectAsStateWithLifecycle()
     val pump by controller.pump.collectAsStateWithLifecycle()
     val presets by app.prefs.presets.collectAsStateWithLifecycle()
     val live by app.sessions.live.collectAsStateWithLifecycle()
-    val prefs by app.prefs.app.collectAsStateWithLifecycle()
     val lifetimePuffs by app.sessions.lifetimePuffs.collectAsStateWithLifecycle()
     val heaterOn = status.heaterMode.isHeating
     val fahrenheit = status.fahrenheit
@@ -157,11 +158,7 @@ internal fun InstrumentDashboard(
         }
 
         if (kind.hasVentyExtras) {
-            val tray by app.sessions.drawTray.collectAsStateWithLifecycle()
-            DrawTimerBuzz(tray.active?.startMs, prefs.puffTargetSeconds * 1_000L, prefs.puffBuzz && enabled)
-            DrawTrayPanel(tray, paused = trackingPaused, enabled = enabled, onSelect = app.sessions::selectDrawSeat,
-                simulate = if (demo) controller::simulateDemoDraw else null,
-                canSimulate = enabled && heaterOn && status.setpointReached && tray.active == null)
+            DrawSessionEntry(draws, trackingPaused, onDraws)
         }
 
         InstrumentRamp(app, controller, kind, fahrenheit, enabled, notify)

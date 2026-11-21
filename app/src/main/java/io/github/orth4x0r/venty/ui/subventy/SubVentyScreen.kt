@@ -31,6 +31,7 @@ import io.github.orth4x0r.venty.session.drawBallsJson
 import io.github.orth4x0r.venty.ui.HeatHaptics
 import io.github.orth4x0r.venty.ui.heatProgress
 import io.github.orth4x0r.venty.ui.history.HistoryScreen
+import io.github.orth4x0r.venty.ui.session.DrawTimerBuzz
 import io.github.orth4x0r.venty.ui.settings.SettingsScreen
 import io.github.orth4x0r.venty.ui.wrapped.WrappedScreen
 import io.github.orth4x0r.venty.update.AppUpdater
@@ -44,13 +45,13 @@ import org.json.JSONObject
 import java.text.DateFormat
 
 private enum class Page(val title: String) {
-    Device("Device"), Archive("Archive"), Collections("Collections"), Notes("Field notes"),
+    Device("Device"), DrawObjects("Session objects"), Archive("Archive"), Collections("Collections"), Notes("Field notes"),
     Postcard("Weekly postcard"), DialIn("Dial-in"), DrawSessions("Draw sessions"), History("Session history"), Wrapped("Wrapped"),
     Settings("Settings"), Lighting("Lighting Desk"), DeviceSettings("Device settings"),
     Links("Link monitor");
 
     val tab: Page get() = when (this) {
-        Device -> Device
+        Device, DrawObjects -> Device
         Settings, Lighting, DeviceSettings, Links -> Settings
         else -> Archive
     }
@@ -79,6 +80,7 @@ fun SubVentyScreen(
     val kind by controller.kind.collectAsStateWithLifecycle()
     val prefs by app.prefs.app.collectAsStateWithLifecycle()
     val live by app.sessions.live.collectAsStateWithLifecycle()
+    val draws by app.sessions.drawTray.collectAsStateWithLifecycle()
     val entries by app.collections.entries.collectAsStateWithLifecycle()
     val paused by app.collections.paused.collectAsStateWithLifecycle()
     val comparisons by app.collections.comparisons.collectAsStateWithLifecycle()
@@ -117,6 +119,9 @@ fun SubVentyScreen(
         progress = { currentLive?.heatProgress() },
         enabled = prefs.heatHaptics,
     )
+    if (kind.hasVentyExtras && page.tab == Page.Device) {
+        DrawTimerBuzz(draws.active?.startMs, prefs.puffTargetSeconds * 1_000L, prefs.puffBuzz && enabled)
+    }
 
     fun notify(text: String, undo: (() -> Unit)? = null) { notice = Notice(text, undo) }
     LaunchedEffect(controller) { controller.notices.collect { notify(it) } }
@@ -171,8 +176,30 @@ fun SubVentyScreen(
                         Page.Device -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                             val deviceStatus = status
                             if (deviceStatus != null && activeConnection) {
-                                InstrumentDashboard(app, controller, deviceStatus, kind, enabled, demo, paused, ::notify)
+                                InstrumentDashboard(app, controller, deviceStatus, kind, enabled, demo, draws, paused,
+                                    onDraws = { page = Page.DrawObjects }, notify = ::notify)
                             } else InstrumentConnection(controller, connection, permissions, bluetoothOn, onGrant, onEnableBluetooth)
+                        }
+                        Page.DrawObjects -> {
+                            Column(Modifier.fillMaxSize().background(Deck.Graphite)) {
+                                Column(
+                                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    DeckKey("‹ Device", { page = Page.Device }, finish = KeyFinish.Graphite)
+                                    DrawSessionPanel(
+                                        draws, paused, enabled, app.sessions::selectDrawSeat,
+                                        simulate = if (demo) controller::simulateDemoDraw else null,
+                                        canSimulate = enabled && heaterOn && status?.setpointReached == true && draws.active == null,
+                                    )
+                                }
+                                if (heaterOn) {
+                                    DeckKey("Turn heater off", {
+                                        controller.stopRamp()
+                                        controller.setHeaterMode(HeaterMode.Off)
+                                    }, Modifier.fillMaxWidth().padding(horizontal = 12.dp), enabled, KeyFinish.Rust)
+                                }
+                            }
                         }
                         Page.DeviceSettings -> FullDeviceSettings(app, controller, status.takeIf { enabled }, kind,
                             onFind = { window = "find" }, onBack = { page = Page.Settings })
