@@ -6,6 +6,12 @@ Open **Device → Session objects** on Venty and choose a color under **Next dra
 
 Tap either sculpture to inspect a draw. **Replay draw** uses an existing draw from that session. Browse older pieces with **Older** and **Newer** once the session has more than 12 draws. **By person** shows each seat’s count, total and average. **Archive → Draw sessions** offers the same views for completed sessions.
 
+| Device | Resin Window | Kinetic Mobile |
+| --- | --- | --- |
+| ![Device dashboard with one Session objects key](device.png) | ![Amber and teal draws in the resin mosaic](resin-window.png) | ![The same two draws hanging beneath the brass counterweight](kinetic-mobile.png) |
+
 In **Try demo Venty**, start heating and wait for **Ready**. Open **Session objects** and tap **Simulate draw** next to the seat picker. To end the demo session, tap **Turn heater off** at the foot of the page.
 
-The APK uses the same application ID and signing certificate as preview 6. The debug build, 123 unit tests and Android lint pass. The mobile tests cover delayed counterweight motion, motion transfer between branches, and placement when one person has most of the draws. Physical Venty draw timing remains to be checked.
+The APK uses the same application ID and signing certificate as preview 6. The debug build, 123 unit tests and Android lint pass. The mobile tests cover delayed counterweight motion, motion transfer between branches, and placement when one person has most of the draws.
+
+The Android 15 emulator recorded Amber and Teal through Demo Venty, rendered both sculptures, and showed the mobile move after **Pluck** and **Replay draw**. Both seats were present in the saved session. The downloaded APK matches the local build. Physical Venty draw timing remains to be checked.
