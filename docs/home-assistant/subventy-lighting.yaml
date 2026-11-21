@@ -1,0 +1,60 @@
+blueprint:
+  name: SubVenty room lighting
+  description: Apply a SubVenty profile look to the lights you select. Use a unique webhook ID from the SubVenty Lighting Desk.
+  domain: automation
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    webhook_id:
+      name: Webhook ID
+      description: Paste the unique ID from SubVenty's Home Assistant setup.
+      selector:
+        text: {}
+    room_lights:
+      name: Room lights
+      description: Select the Govee light entities or light group for this installation.
+      selector:
+        target:
+          entity:
+            domain: light
+
+triggers:
+  - trigger: webhook
+    webhook_id: !input webhook_id
+    allowed_methods:
+      - POST
+    local_only: true
+
+conditions:
+  - condition: template
+    value_template: >-
+      {% set cue = trigger.json if trigger.json is defined and trigger.json is mapping else {} %}
+      {% set rgb = cue.get('rgb') %}
+      {% set level = cue.get('brightness_pct') %}
+      {% set fade = cue.get('transition') %}
+      {{ cue.get('schema') == 'subventy.lighting-cue.v1'
+         and cue.get('phase') in ['heating', 'ready', 'draw', 'end']
+         and level is integer and 0 <= level <= 100
+         and fade is number and 0.2 <= fade <= 5
+         and rgb is sequence and rgb is not string and rgb is not mapping and rgb | length == 3
+         and rgb[0] is integer and 0 <= rgb[0] <= 255
+         and rgb[1] is integer and 0 <= rgb[1] <= 255
+         and rgb[2] is integer and 0 <= rgb[2] <= 255 }}
+
+actions:
+  - choose:
+      - conditions: "{{ trigger.json.brightness_pct == 0 }}"
+        sequence:
+          - action: light.turn_off
+            target: !input room_lights
+            data:
+              transition: "{{ trigger.json.transition }}"
+    default:
+      - action: light.turn_on
+        target: !input room_lights
+        data:
+          rgb_color: "{{ trigger.json.rgb }}"
+          brightness_pct: "{{ trigger.json.brightness_pct }}"
+          transition: "{{ trigger.json.transition }}"
+
+mode: restart

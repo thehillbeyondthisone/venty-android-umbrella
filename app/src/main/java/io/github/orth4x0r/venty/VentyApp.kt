@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import io.github.orth4x0r.venty.ble.ConnectionState
 import io.github.orth4x0r.venty.ble.VentyController
+import io.github.orth4x0r.venty.lighting.HomeAssistantLighting
 import io.github.orth4x0r.venty.prefs.BatteryLog
 import io.github.orth4x0r.venty.prefs.PrefsStore
 import io.github.orth4x0r.venty.service.VentyService
@@ -25,16 +26,19 @@ import kotlinx.coroutines.launch
 class VentyApp : Application() {
     val controller: VentyController by lazy { VentyController(this) }
     val prefs: PrefsStore by lazy { PrefsStore(this) }
+    val collections by lazy { io.github.orth4x0r.venty.collections.CollectionStore(this) }
     val sessions: SessionTracker by lazy { SessionTracker(this) }
     val battery: BatteryLog by lazy { BatteryLog(this) }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    internal val lighting by lazy { HomeAssistantLighting(this, controller, collections.paused, scope) }
 
     override fun onCreate() {
         super.onCreate()
 
         // Load saved prefs, sessions and battery history off the main thread before the UI asks.
         scope.launch(Dispatchers.IO) { prefs; sessions; battery }
+        scope.launch { lighting }
 
         // Keep the connection alive in the background while there is one.
         scope.launch {
@@ -51,15 +55,21 @@ class VentyApp : Application() {
             }
         }
 
+        scope.launch { sessions.history.collect { collections.ingest(it) } }
+
         watchIdle()
 
         // Feed every status into the session tracker (puffs, timer, ETA) and the battery log.
         scope.launch {
-            controller.status.collect { s ->
+            controller.reportedStatus.collect { s ->
                 if (s != null) {
-                    sessions.onStatus(s)
+                    sessions.setTrackingPaused(collections.paused.value)
+                    val connection = controller.connection.value
+                    val device = if (connection is ConnectionState.Connected && connection.demo)
+                        "demo:${controller.kind.value.name}" else controller.lastDeviceAddress ?: controller.kind.value.name
+                    sessions.onStatus(s, device = device)
                     // A Volcano reports a placeholder 100 %; keep it out of the battery history.
-                    if (controller.kind.value.hasBattery) battery.onStatus(s)
+                    if (!collections.paused.value && controller.kind.value.hasBattery) battery.onStatus(s)
                 }
             }
         }
