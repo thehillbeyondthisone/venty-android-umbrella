@@ -8,6 +8,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -59,6 +60,7 @@ internal fun DeckKey(
     description: String? = null,
     onLongClick: (() -> Unit)? = null,
     repeatWhileHeld: Boolean = false,
+    swatch: Color? = null,
 ) {
     val interaction = if (repeatWhileHeld) remember { MutableInteractionSource() } else null
     var repeating by remember { mutableStateOf(false) }
@@ -93,14 +95,17 @@ internal fun DeckKey(
             .padding(horizontal = 6.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            label,
-            color = if (enabled) ink else ink.copy(alpha = .60f),
-            fontSize = if (label.length == 1) 22.sp else 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            lineHeight = 16.sp,
-            textAlign = TextAlign.Center,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            if (swatch != null) Box(Modifier.size(9.dp).background(swatch, CircleShape).border(.5.dp, Deck.Ink, CircleShape))
+            Text(
+                label,
+                color = if (enabled) ink else ink.copy(alpha = .60f),
+                fontSize = if (label.length == 1) 22.sp else 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 16.sp,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 

@@ -27,6 +27,7 @@ data class SessionRecord(
     val totalDrawMs: Long = 0L,
     val reachedBands: List<Int> = emptyList(),
     val deviceKey: String = "legacy",
+    val drawBalls: List<DrawBall> = emptyList(),
 ) {
     val durationMs: Long get() = (endMs - startMs).coerceAtLeast(0L)
 }
@@ -84,12 +85,17 @@ class SessionTracker(context: Context) {
     private val lock = Any()
     private val writeLock = Any()
     private val detector = PuffDetector()
+    private val draws = DrawLedger()
     private val tracking = SessionTrackingGate()
     private val reachedBands = linkedSetOf<Int>()
     private var deviceKey = "legacy"
+    private var observedDevice: String? = null
 
     private val _live = MutableStateFlow<LiveSession?>(null)
     val live: StateFlow<LiveSession?> = _live.asStateFlow()
+
+    private val _drawTray = MutableStateFlow(DrawTray())
+    val drawTray: StateFlow<DrawTray> = _drawTray.asStateFlow()
 
     private val _history = MutableStateFlow<List<SessionRecord>>(emptyList())
     val history: StateFlow<List<SessionRecord>> = _history.asStateFlow()
@@ -128,13 +134,37 @@ class SessionTracker(context: Context) {
                 _live.value = null
                 detector.reset()
                 reachedBands.clear()
+                draws.clear()
+                _drawTray.value = draws.tray
             }
         }
     }
 
-    fun onStatus(s: VentyStatus, nowMs: Long = System.currentTimeMillis(), device: String = "legacy") {
+    fun selectDrawSeat(seat: DrawSeat?) {
+        synchronized(lock) {
+            if (!tracking.paused) {
+                draws.select(seat)
+                _drawTray.value = draws.tray
+            }
+        }
+    }
+
+    fun onStatus(
+        s: VentyStatus,
+        nowMs: Long = System.currentTimeMillis(),
+        device: String = "legacy",
+        supportsDraws: Boolean = true,
+    ) {
         var save = false
         synchronized(lock) {
+            if (observedDevice != null && observedDevice != device) {
+                if (active) {
+                    endSession(nowMs)
+                    save = true
+                }
+                resetConnection()
+            }
+            observedDevice = device
             val heating = s.heaterMode.isHeating
             if (!tracking.allows(heating)) return@synchronized
             if (!heating) {
@@ -162,6 +192,7 @@ class SessionTracker(context: Context) {
                 puffStartMs = 0L
                 stats = SessionStatsAccumulator(nowMs)
                 detector.reset()
+                draws.beginSession()
             }
             seenAny = true
             if (s.setpointReached) reachedBands += (s.effectiveTargetTenths / 50) * 5
@@ -172,24 +203,29 @@ class SessionTracker(context: Context) {
                 reached = true
                 if (startedFromOff) heatUpSeconds = ((nowMs - startMs) / 1000L).toInt()
             }
-            when (val e = detector.onStatus(s, nowMs)) {
+            val event = if (supportsDraws) detector.onStatus(s, nowMs, allowMerge = draws.canMerge) else null
+            when (event) {
                 is PuffEvent.Started -> {
                     puffs++
                     puffing = true
-                    lastPuffMs = e.atMs
-                    puffStartMs = e.atMs
-                    stats.onPuffStarted(e.atMs)
-                    _lifetimePuffs.value = _lifetimePuffs.value + 1
-                    save = true
+                    lastPuffMs = event.atMs
+                    puffStartMs = event.atMs
+                    stats.onPuffStarted(event.atMs)
+                    if (!deviceKey.startsWith("demo:")) {
+                        _lifetimePuffs.value = _lifetimePuffs.value + 1
+                        save = true
+                    }
                 }
                 is PuffEvent.Ended -> {
                     puffing = false
-                    stats.onPuffEnded(e.durationMs)
+                    stats.onPuffEnded(event.durationMs)
                 }
                 null -> {}
             }
             // A resumed puff is merged without an event, so ask the detector directly.
-            puffing = detector.puffing
+            puffing = supportsDraws && detector.puffing
+            draws.record(event, puffing)?.let { stats.onPuffResumed(it.startMs) }
+            _drawTray.value = draws.tray
             val elapsed = ((nowMs - startMs) / 1000L).toInt()
             val eta = if (reached) null else estimateEta(s.effectiveTargetTenths, elapsed, rates)
             _live.value = LiveSession(startMs, puffs, heatUpSeconds, eta, puffing, lastPuffMs, puffStartMs.takeIf { puffing })
@@ -204,11 +240,19 @@ class SessionTracker(context: Context) {
                 endSession(nowMs)
                 save = true
             }
-            detector.reset()
-            tracking.resetConnection()
-            seenAny = false
+            resetConnection()
+            observedDevice = null
         }
         if (save) save()
+    }
+
+    /** Caller holds [lock]. */
+    private fun resetConnection() {
+        detector.reset()
+        tracking.resetConnection()
+        draws.clear()
+        _drawTray.value = draws.tray
+        seenAny = false
     }
 
     fun clearHistory() {
@@ -226,14 +270,17 @@ class SessionTracker(context: Context) {
         puffing = false
         _live.value = null
         stats.finish(nowMs)
-        if (nowMs - startMs >= MIN_SESSION_MS) {
+        if (nowMs - startMs >= MIN_SESSION_MS || draws.tray.balls.isNotEmpty()) {
             val record = SessionRecord(
                 startMs, nowMs, puffs, heatUpSeconds, maxTarget, boosted,
                 stats.avgTargetTenths(), stats.longestDrawMs, stats.totalDrawMs, reachedBands.toList(), deviceKey,
+                draws.tray.balls,
             )
             _history.value = (listOf(record) + _history.value).take(MAX_HISTORY)
             rates = _history.value.mapNotNull { heatUpRate(it) }
         }
+        draws.closeSession()
+        _drawTray.value = draws.tray
     }
 
     private fun save() {
@@ -260,7 +307,8 @@ class SessionTracker(context: Context) {
                             .put("avgTarget", r.avgTargetTenths)
                             .put("longestDraw", r.longestDrawMs)
                             .put("totalDraw", r.totalDrawMs)
-                            .put("reachedBands", JSONArray(r.reachedBands)).put("device", r.deviceKey),
+                            .put("reachedBands", JSONArray(r.reachedBands)).put("device", r.deviceKey)
+                            .put("drawBalls", r.drawBalls.drawBallsJson()),
                     )
                 }
                 val json = JSONObject().put("lifetimePuffs", lifetime).put("sessions", arr).toString()
@@ -300,11 +348,12 @@ class SessionTracker(context: Context) {
                     totalDrawMs = o.optLong("totalDraw", 0L),
                     reachedBands = o.optJSONArray("reachedBands")?.let { a -> List(a.length()) { a.getInt(it) } }.orEmpty(),
                     deviceKey = o.optString("device", "legacy"),
+                    drawBalls = o.optJSONArray("drawBalls").readDrawBalls(),
                 )
             }
             val sorted = list.sortedByDescending { it.startMs }.take(MAX_HISTORY)
             _history.value = sorted
-            _lifetimePuffs.value = root.optInt("lifetimePuffs", sorted.sumOf { it.puffs })
+            _lifetimePuffs.value = root.optInt("lifetimePuffs", sorted.filterNot { it.deviceKey.startsWith("demo:") }.sumOf { it.puffs })
             rates = sorted.mapNotNull { heatUpRate(it) }
         } catch (_: Exception) {
             // A corrupt file just means starting fresh.

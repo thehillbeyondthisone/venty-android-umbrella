@@ -67,7 +67,7 @@ class VentyApp : Application() {
                     val connection = controller.connection.value
                     val device = if (connection is ConnectionState.Connected && connection.demo)
                         "demo:${controller.kind.value.name}" else controller.lastDeviceAddress ?: controller.kind.value.name
-                    sessions.onStatus(s, device = device)
+                    sessions.onStatus(s, device = device, supportsDraws = controller.kind.value.hasVentyExtras)
                     // A Volcano reports a placeholder 100 %; keep it out of the battery history.
                     if (!collections.paused.value && controller.kind.value.hasBattery) battery.onStatus(s)
                 }

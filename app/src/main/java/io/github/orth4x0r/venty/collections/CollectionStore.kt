@@ -1,7 +1,10 @@
 package io.github.orth4x0r.venty.collections
 
 import android.content.Context
+import io.github.orth4x0r.venty.session.DrawBall
 import io.github.orth4x0r.venty.session.SessionRecord
+import io.github.orth4x0r.venty.session.drawBallsJson
+import io.github.orth4x0r.venty.session.readDrawBalls
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
@@ -9,7 +12,7 @@ import org.json.JSONObject
 
 /** Permanent local archive; intentionally independent of the rolling recent-session history. */
 data class CollectionEntry(val id: String, val startMs: Long, val endMs: Long, val device: String,
-    val bands: List<Int>, val note: String = "")
+    val bands: List<Int>, val note: String = "", val drawBalls: List<DrawBall> = emptyList())
 
 enum class Impression { Enjoyed, Neutral }
 
@@ -106,7 +109,7 @@ class CollectionStore(context: Context) {
         val array = JSONArray()
         entries.forEach { e -> array.put(JSONObject().put("id", e.id).put("start", e.startMs)
             .put("end", e.endMs).put("device", e.device).put("bands", JSONArray(e.bands))
-            .put("note", e.note)) }
+            .put("note", e.note).apply { if (e.drawBalls.isNotEmpty()) put("drawBalls", e.drawBalls.drawBallsJson()) }) }
         prefs.edit().putString("entries", array.toString()).apply()
         _entries.value = entries
     }
@@ -117,7 +120,8 @@ class CollectionStore(context: Context) {
             val e = array.getJSONObject(i)
             val bands = e.optJSONArray("bands") ?: JSONArray()
             CollectionEntry(e.getString("id"), e.getLong("start"), e.getLong("end"),
-                e.optString("device", "legacy"), List(bands.length()) { bands.getInt(it) }, e.optString("note"))
+                e.optString("device", "legacy"), List(bands.length()) { bands.getInt(it) }, e.optString("note"),
+                e.optJSONArray("drawBalls").readDrawBalls())
         }
     }.getOrDefault(emptyList())
 }
@@ -128,7 +132,7 @@ internal fun mergeArchive(entries: List<CollectionEntry>, history: List<SessionR
     for (session in history) {
         val id = "${session.deviceKey}:${session.startMs}:${session.endMs}"
         if (id !in existing) existing[id] = CollectionEntry(id, session.startMs, session.endMs,
-            session.deviceKey, session.reachedBands.distinct().sorted())
+            session.deviceKey, session.reachedBands.distinct().sorted(), drawBalls = session.drawBalls)
     }
     return existing.values.sortedByDescending { it.startMs }
 }

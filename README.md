@@ -6,14 +6,14 @@ This branch contains the **native Android app**, plus the earlier browser design
 
 ## Try the Android app
 
-1. On your Android phone, [download SubVenty preview 5](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview5/subventy-0.4.0-preview5.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
+1. On your Android phone, [download SubVenty preview 6](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview6/subventy-0.4.0-preview6.apk?raw=true). If GitHub shows the file page, tap **Download raw file**.
 2. Open the downloaded APK. Android may ask you to allow installs from the browser or Files app you used.
 3. Launch **SubVenty**. Try **Demo Venty** or **Demo Volcano** first. Demo entries are labeled and stored separately from hardware entries.
 4. For a real device, allow Nearby devices/Bluetooth access, enable Bluetooth, select **Scan for devices**, then select your Venty or Volcano.
 
-The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview5) contains the APK and checksum.
+The [build-artifact branch](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview6) contains the APK and checksum.
 
-Preview 5 is version **0.4.0-subventy.5** (code 13). Install it over an earlier preview to retain your local archive and preferences.
+Preview 6 is version **0.4.0-subventy.6** (code 14). Install it over an earlier preview to retain your local archive and preferences.
 
 Android 8.0+ is required. This preview uses a separate application ID (`io.github.thehillbeyondthisone.subventy`), so it can coexist with the upstream Venty app. Close/disconnect the other controller before connecting SubVenty to the same physical device.
 
@@ -22,6 +22,14 @@ You do **not** need to merge the PR, install Android Studio, or build anything y
 ## Room lighting
 
 **Settings → Lighting Desk** applies a saved look to your Home Assistant lights during heat-up, at temperature, during an estimated Venty draw, and at session end. Edit and share named profiles with their own colors, brightness and fades. A Home Assistant blueprint handles the light selection. [Set up Govee room lighting](docs/home-assistant/README.md).
+
+## Draw tray
+
+On Venty, scroll to **Draw tray** and pick Amber, Teal, Rose, Violet or Unassigned. The selected color attaches when a draw starts. The ball grows while the draw is detected and drops into the tray when it ends.
+
+**Tray** shows the latest balls in order. **By person** groups all the finished draws by color and shows count, total time and average duration. Color choices are per-session seats. When the session ends, the seat resets and its balls are available under **Archive → Draw sessions** and in JSON export.
+
+Venty estimates draw timing from its shutoff timer, so durations are approximate. Closely spaced resets on the same seat may become one draw. A seat handoff preserves separate draws when the timer reports an end and a new start. **Do not track** pauses collection. Try **Simulate draw** in Demo Venty after it reaches its target.
 
 ## Session collections
 

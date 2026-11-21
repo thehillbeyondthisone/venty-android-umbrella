@@ -350,6 +350,12 @@ class VentyController(context: Context) {
 
     fun startDemo() = startSession("Demo Venty", demo = true, kind = DeviceKind.Venty) { DemoLink() }
 
+    /** Exercise the draw detector with simulated reports. A physical link cannot receive this. */
+    fun simulateDemoDraw() {
+        val demoLink = link as? DemoLink ?: return
+        scope.launch { demoLink.simulateDraw() }
+    }
+
     fun startVolcanoDemo() = startSession("Demo Volcano", demo = true, kind = DeviceKind.Volcano) { DemoVolcanoLink() }
 
     fun forgetDevice() {

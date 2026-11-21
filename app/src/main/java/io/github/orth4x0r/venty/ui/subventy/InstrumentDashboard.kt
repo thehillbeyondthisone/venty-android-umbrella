@@ -25,7 +25,7 @@ import io.github.orth4x0r.venty.prefs.PrefsStore
 import io.github.orth4x0r.venty.session.LiveSession
 import io.github.orth4x0r.venty.session.estimateBatteryForecast
 import io.github.orth4x0r.venty.ui.Temperature
-import io.github.orth4x0r.venty.ui.session.PuffTimer
+import io.github.orth4x0r.venty.ui.session.DrawTimerBuzz
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -37,6 +37,7 @@ internal fun InstrumentDashboard(
     kind: DeviceKind,
     enabled: Boolean,
     demo: Boolean,
+    trackingPaused: Boolean,
     notify: (String, (() -> Unit)?) -> Unit,
 ) {
     val info by controller.info.collectAsStateWithLifecycle()
@@ -105,7 +106,7 @@ internal fun InstrumentDashboard(
             DeckLabel("$maximum°", 11)
         }
 
-        live?.let { SessionReadout(it, kind.hasVentyExtras, prefs.puffTargetSeconds, prefs.puffBuzz) }
+        live?.let { SessionReadout(it, kind.hasVentyExtras) }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             DeckKey("−", { changeTarget(target - 1) }, Modifier.width(50.dp), enabled && target > minimum,
                 description = "Lower target", repeatWhileHeld = true)
@@ -155,6 +156,14 @@ internal fun InstrumentDashboard(
                 Modifier.fillMaxWidth(), enabled, KeyFinish.Teal)
         }
 
+        if (kind.hasVentyExtras) {
+            val tray by app.sessions.drawTray.collectAsStateWithLifecycle()
+            DrawTimerBuzz(tray.active?.startMs, prefs.puffTargetSeconds * 1_000L, prefs.puffBuzz && enabled)
+            DrawTrayPanel(tray, paused = trackingPaused, enabled = enabled, onSelect = app.sessions::selectDrawSeat,
+                simulate = if (demo) controller::simulateDemoDraw else null,
+                canSimulate = enabled && heaterOn && status.setpointReached && tray.active == null)
+        }
+
         InstrumentRamp(app, controller, kind, fahrenheit, enabled, notify)
         if (kind.hasBattery) InstrumentBattery(app, status, live, demo)
         DeckPanel {
@@ -180,7 +189,7 @@ internal fun InstrumentDashboard(
 }
 
 @Composable
-private fun SessionReadout(live: LiveSession, showPuffs: Boolean, targetSeconds: Int, buzz: Boolean) {
+private fun SessionReadout(live: LiveSession, showPuffs: Boolean) {
     var now by remember(live.startMs) { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(live.startMs) {
         while (true) {
@@ -193,7 +202,6 @@ private fun SessionReadout(live: LiveSession, showPuffs: Boolean, targetSeconds:
         val puffs = if (!showPuffs) "" else if (live.puffs == 1) "  ·  1 puff" else "  ·  ${live.puffs} puffs"
         val eta = live.etaSeconds?.let { "  ·  ~$it s to temp" }.orEmpty()
         DeckLabel("$elapsed elapsed$puffs$eta", 12)
-        if (showPuffs && live.puffStartMs != null) PuffTimer(live.puffStartMs, targetSeconds * 1_000L, buzz)
     }
 }
 

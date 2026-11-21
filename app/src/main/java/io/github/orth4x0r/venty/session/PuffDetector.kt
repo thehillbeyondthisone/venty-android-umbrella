@@ -23,7 +23,7 @@ class PuffDetector {
     private var puffStartMs = 0L
     private var lastEndMs: Long? = null
 
-    fun onStatus(s: VentyStatus, nowMs: Long): PuffEvent? {
+    fun onStatus(s: VentyStatus, nowMs: Long, allowMerge: Boolean = true): PuffEvent? {
         val pt = prevTarget
         val pm = prevMode
         if ((pt != null && pt != s.targetTenths) || (pm != null && pm != s.heaterMode.code)) {
@@ -51,11 +51,12 @@ class PuffDetector {
             if (inPuff) return null
             inPuff = true
             val end = lastEndMs
-            if (end != null && nowMs - end <= WINDOW_MS) {
+            if (allowMerge && end != null && nowMs - end in 0..WINDOW_MS) {
                 // Merge into the previous puff: keep its start, emit nothing new.
                 lastEndMs = null
                 return null
             }
+            lastEndMs = null
             puffStartMs = nowMs
             return PuffEvent.Started(nowMs)
         }

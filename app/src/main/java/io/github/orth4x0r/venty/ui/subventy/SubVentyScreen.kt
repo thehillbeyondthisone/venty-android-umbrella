@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.orth4x0r.venty.VentyApp
 import io.github.orth4x0r.venty.ble.*
 import io.github.orth4x0r.venty.collections.CollectionEntry
+import io.github.orth4x0r.venty.session.drawBallsJson
 import io.github.orth4x0r.venty.ui.HeatHaptics
 import io.github.orth4x0r.venty.ui.heatProgress
 import io.github.orth4x0r.venty.ui.history.HistoryScreen
@@ -44,7 +45,7 @@ import java.text.DateFormat
 
 private enum class Page(val title: String) {
     Device("Device"), Archive("Archive"), Collections("Collections"), Notes("Field notes"),
-    Postcard("Weekly postcard"), DialIn("Dial-in"), History("Session history"), Wrapped("Wrapped"),
+    Postcard("Weekly postcard"), DialIn("Dial-in"), DrawSessions("Draw sessions"), History("Session history"), Wrapped("Wrapped"),
     Settings("Settings"), Lighting("Lighting Desk"), DeviceSettings("Device settings"),
     Links("Link monitor");
 
@@ -135,7 +136,8 @@ fun SubVentyScreen(
                     entries.forEach { e ->
                         array.put(JSONObject().put("id", e.id).put("startMs", e.startMs)
                             .put("endMs", e.endMs).put("device", e.device)
-                            .put("reachedBandsC", JSONArray(e.bands)).put("note", e.note))
+                            .put("reachedBandsC", JSONArray(e.bands)).put("note", e.note)
+                            .apply { if (e.drawBalls.isNotEmpty()) put("drawBalls", e.drawBalls.drawBallsJson()) })
                     }
                     val dialIn = JSONObject()
                     comparisons.forEach { (key, comparison) -> dialIn.put(key, comparison.toJson()) }
@@ -169,7 +171,7 @@ fun SubVentyScreen(
                         Page.Device -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                             val deviceStatus = status
                             if (deviceStatus != null && activeConnection) {
-                                InstrumentDashboard(app, controller, deviceStatus, kind, enabled, demo, ::notify)
+                                InstrumentDashboard(app, controller, deviceStatus, kind, enabled, demo, paused, ::notify)
                             } else InstrumentConnection(controller, connection, permissions, bluetoothOn, onGrant, onEnableBluetooth)
                         }
                         Page.DeviceSettings -> FullDeviceSettings(app, controller, status.takeIf { enabled }, kind,
@@ -203,6 +205,7 @@ fun SubVentyScreen(
                                         S7Button("Postcard", { page = Page.Postcard }, Modifier.weight(1f))
                                     }
                                     S7Button("Session history and Wrapped", { page = Page.History }, Modifier.fillMaxWidth())
+                                    S7Button("Draw sessions", { page = Page.DrawSessions }, Modifier.fillMaxWidth())
                                     ArchiveScope(showAll, demo) { showAll = !showAll }
                                     ArchiveList(archive, notes = false, scope = archiveScope, onNote = ::editNote)
                                 }
@@ -227,6 +230,10 @@ fun SubVentyScreen(
                                         }
                                     }
                                 }
+                                Page.DrawSessions -> {
+                                    ArchiveScope(showAll, demo) { showAll = !showAll }
+                                    DrawArchive(archive, archiveScope)
+                                }
                                 Page.Settings -> {
                                     S7Button("Device settings and pairing", { page = Page.DeviceSettings }, Modifier.fillMaxWidth())
                                     if (kind.hasVentyExtras) S7Button("Find my device", { window = "find" }, Modifier.fillMaxWidth(), enabled)
@@ -236,7 +243,7 @@ fun SubVentyScreen(
                                     S7Check("Do not track", paused) { pause ->
                                         app.sessions.setTrackingPaused(pause)
                                         if (!pause) controller.reportedStatus.value?.takeIf { !it.heaterMode.isHeating }
-                                            ?.let { app.sessions.onStatus(it, device = deviceKey) }
+                                            ?.let { app.sessions.onStatus(it, device = deviceKey, supportsDraws = kind.hasVentyExtras) }
                                         app.collections.setPaused(pause)
                                     }
                                     S7Text(if (paused) "Automatic collection paused. Recording resumes after the heater is off."

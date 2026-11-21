@@ -9,7 +9,7 @@ SubVenty sends lighting cues from your Android phone to a Home Assistant automat
 ## Set it up
 
 1. In Home Assistant, open the Govee lights you want to use and verify you can set their color and brightness there. If they are missing, check whether your models support the [Govee lights local integration](https://www.home-assistant.io/integrations/govee_light_local/). You can select several lights or create a light group.
-2. On your phone, install [SubVenty preview 5](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview5/subventy-0.4.0-preview5.apk?raw=true). Connect your phone to the same network as the Pi.
+2. On your phone, install [SubVenty preview 6](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview6/subventy-0.4.0-preview6.apk?raw=true). Connect your phone to the same network as the Pi.
 3. Open **Settings → Lighting Desk**. Open **Home Assistant setup**. The address starts at `http://192.168.1.170:8123`. Use your actual port or HTTPS base address if yours differs. Copy the generated **Webhook ID** and tap **Save bridge**.
 4. In Home Assistant, go to **Settings → Automations & scenes → Blueprints → Import blueprint** and paste the [blueprint URL](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/design/visual-directions/docs/home-assistant/subventy-lighting.yaml). The setup window can copy this URL for you.
 5. Create an automation from **SubVenty room lighting**. Paste the exact webhook ID, select your light entities or group, and save and enable it.
