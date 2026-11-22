@@ -10,4 +10,4 @@
 
 Tap a piece to inspect it. Pull a bead sideways and release to pluck it on Kinetic Mobile. Use **⋮** to switch scenes, see **By person**, or simulate a draw in Demo Venty. The live screen keeps seat selection and heater-off at the bottom.
 
-The signed APK installed over Preview 9 on Android 15, and both views were inspected at 360 dp. The debug build, 125 unit tests and Android lint passed. Both download links were checked against the signed build byte for byte.
+The signed APK installed over Preview 9 on Android 15. At 360 dp, both scenes filled the width and used more than 600 dp of height between the header and lower controls. Tapping a piece opened its details, and pulling a bead made the mobile move without opening details. The debug build, 125 unit tests and Android lint passed. Both download links were checked against the signed build byte for byte.
