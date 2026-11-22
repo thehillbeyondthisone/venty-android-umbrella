@@ -1,6 +1,6 @@
 # SubVenty preview 9
 
-[Download the Android APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview9/subventy-0.4.0-preview9.apk?raw=true)
+[Download the Preview 9 APK directly](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/refs/heads/builds/subventy-preview9/subventy-0.4.0-preview9.apk) · [Current preview](../iteration10/README.md)
 
 **Archive → Draw sessions** opens saved sculptures in a dedicated viewer. The graphite screen gives the sculpture center stage and shows the session date in a small amber readout. Use **⋮** to switch sculpture, browse draws, or open **By person**. Tap a piece to inspect it.
 
