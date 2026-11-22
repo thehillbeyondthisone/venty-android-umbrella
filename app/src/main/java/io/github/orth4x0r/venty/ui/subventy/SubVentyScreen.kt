@@ -46,7 +46,8 @@ import java.text.DateFormat
 
 private enum class Page(val title: String) {
     Device("Device"), DrawObjects("Session objects"), Archive("Archive"), Collections("Collections"), Notes("Field notes"),
-    Postcard("Weekly postcard"), DialIn("Dial-in"), DrawSessions("Draw sessions"), History("Session history"), Wrapped("Wrapped"),
+    Postcard("Weekly postcard"), DialIn("Dial-in"), DrawSessions("Draw sessions"), SavedDraws("Saved session"),
+    History("Session history"), Wrapped("Wrapped"),
     Settings("Settings"), Lighting("Lighting Desk"), DeviceSettings("Device settings"),
     Links("Link monitor");
 
@@ -58,9 +59,12 @@ private enum class Page(val title: String) {
 
     val parent: Page get() = when (this) {
         Device, Archive, Settings -> Device
+        SavedDraws -> DrawSessions
         Wrapped -> History
         else -> tab
     }
+
+    val focused: Boolean get() = this == DrawObjects || this == SavedDraws
 }
 
 private data class Notice(val text: String, val undo: (() -> Unit)?)
@@ -91,6 +95,7 @@ fun SubVentyScreen(
     var window by rememberSaveable { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<Notice?>(null) }
     var showAll by rememberSaveable { mutableStateOf(false) }
+    var savedDrawId by rememberSaveable { mutableStateOf<String?>(null) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     var noteDraft by rememberSaveable { mutableStateOf("") }
 
@@ -168,7 +173,7 @@ fun SubVentyScreen(
         Column(
             Modifier.fillMaxSize().background(Deck.Graphite).safeDrawingPadding(),
         ) {
-            if (page != Page.DrawObjects) {
+            if (!page.focused) {
                 InstrumentHeader(connection, status, kind, controller)
                 if (page != Page.Device) DeckStripe()
             }
@@ -201,6 +206,10 @@ fun SubVentyScreen(
                                 simulate = if (demo) controller::simulateDemoDraw else null,
                                 canSimulate = enabled && heaterOn && ready && draws.active == null,
                             )
+                        }
+                        Page.SavedDraws -> {
+                            val saved = entries.firstOrNull { it.id == savedDrawId && it.drawBalls.isNotEmpty() }
+                            SavedDrawSession(saved, onBack = { page = Page.DrawSessions })
                         }
                         Page.DeviceSettings -> FullDeviceSettings(app, controller, status.takeIf { enabled }, kind,
                             onFind = { window = "find" }, onBack = { page = Page.Settings })
@@ -260,7 +269,10 @@ fun SubVentyScreen(
                                 }
                                 Page.DrawSessions -> {
                                     ArchiveScope(showAll, demo) { showAll = !showAll }
-                                    DrawArchive(archive, archiveScope)
+                                    DrawArchive(archive, archiveScope) { id ->
+                                        savedDrawId = id
+                                        page = Page.SavedDraws
+                                    }
                                 }
                                 Page.Settings -> {
                                     S7Button("Device settings and pairing", { page = Page.DeviceSettings }, Modifier.fillMaxWidth())
@@ -306,7 +318,7 @@ fun SubVentyScreen(
                     }
                 }
             }
-            if (page != Page.DrawObjects) Row(
+            if (!page.focused) Row(
                 Modifier.fillMaxWidth().padding(7.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {

@@ -12,8 +12,8 @@ android {
         applicationId = "io.github.thehillbeyondthisone.subventy"
         minSdk = 26
         targetSdk = 36
-        versionCode = 16
-        versionName = "0.4.0-subventy.8"
+        versionCode = 17
+        versionName = "0.4.0-subventy.9"
     }
 
     buildTypes {

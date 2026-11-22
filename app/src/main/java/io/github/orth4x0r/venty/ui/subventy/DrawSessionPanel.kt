@@ -3,6 +3,7 @@ package io.github.orth4x0r.venty.ui.subventy
 import android.animation.ValueAnimator
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -28,7 +29,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.orth4x0r.venty.collections.CollectionEntry
 import io.github.orth4x0r.venty.session.DrawBall
 import io.github.orth4x0r.venty.session.DrawSeat
@@ -38,35 +41,51 @@ import java.text.DateFormat
 import kotlin.math.sqrt
 
 @Composable
-internal fun DrawArchive(entries: List<CollectionEntry>, scope: String) {
+internal fun DrawArchive(entries: List<CollectionEntry>, scope: String, onOpen: (String) -> Unit) {
     val sessions = remember(entries) { entries.filter { it.drawBalls.isNotEmpty() } }
-    var selectedId by rememberSaveable(scope) { mutableStateOf<String?>(null) }
     var page by rememberSaveable(scope) { mutableIntStateOf(0) }
-    val selected = sessions.firstOrNull { it.id == selectedId }
-    fun date(entry: CollectionEntry) = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(entry.startMs)
-    if (selected == null) {
-        if (sessions.isEmpty()) S7Text("Finished sessions with recorded draws will appear here.", 12, S7.Muted)
-        val last = (sessions.size - 1).coerceAtLeast(0) / 20
-        val current = page.coerceAtMost(last)
-        sessions.drop(current * 20).take(20).forEach { entry ->
-            val prefix = if (entry.device.startsWith("demo:")) "Demo · " else ""
-            ArchiveRow(date(entry), "$prefix${entry.drawBalls.size} completed draws · ${drawSeconds(entry.drawBalls.sumOf { it.durationMs })}") {
-                selectedId = entry.id
+    if (sessions.isEmpty()) S7Text("Finished sessions with recorded draws will appear here.", 12, S7.Muted)
+    val last = (sessions.size - 1).coerceAtLeast(0) / 20
+    val current = page.coerceAtMost(last)
+    sessions.drop(current * 20).take(20).forEach { entry ->
+        val prefix = if (entry.device.startsWith("demo:")) "Demo · " else ""
+        ArchiveRow(sessionDate(entry), "$prefix${entry.drawBalls.size} completed draws · ${drawSeconds(entry.drawBalls.sumOf { it.durationMs })}") {
+            onOpen(entry.id)
+        }
+    }
+    if (last > 0) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        S7Button("Newer", { page = current - 1 }, enabled = current > 0)
+        S7Button("Older", { page = current + 1 }, enabled = current < last)
+    }
+}
+
+@Composable
+internal fun SavedDrawSession(entry: CollectionEntry?, onBack: () -> Unit) {
+    Column(Modifier.fillMaxSize().background(S7.Workspace).padding(horizontal = 14.dp, vertical = 5.dp)) {
+        if (entry == null) {
+            SceneHeader("Saved session", onBack, backLabel = "Back to Draw sessions")
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                DeckLabel("This session is unavailable", 14, S7.Muted)
             }
-        }
-        if (last > 0) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            S7Button("Newer", { page = current - 1 }, enabled = current > 0)
-            S7Button("Older", { page = current + 1 }, enabled = current < last)
-        }
-    } else {
-        S7Button("‹ Draw sessions", { selectedId = null })
-        DeckLabel(date(selected), 15, S7.Text)
-        if (selected.device.startsWith("demo:")) DeckLabel("Demo session", 11, S7.Muted)
-        Column(Modifier.fillMaxWidth()) {
-            key(selected.id) { SessionDrawViews(selected.drawBalls) }
+        } else {
+            key(entry.id) {
+                SessionDrawViews(entry.drawBalls, onBack = onBack, backLabel = "Back to Draw sessions")
+            }
+            val prefix = if (entry.device.startsWith("demo:")) "Demo · " else ""
+            Text(
+                prefix + sessionDate(entry),
+                Modifier.padding(top = 8.dp, bottom = 10.dp)
+                    .background(Color(0xFF2B2318), Deck.Shape)
+                    .border(1.dp, Color(0xFF594628), Deck.Shape)
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                color = S7.Link, fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 16.sp,
+            )
         }
     }
 }
+
+private fun sessionDate(entry: CollectionEntry) =
+    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(entry.startMs)
 
 @Composable
 internal fun DrawSessionEntry(tray: DrawTray, paused: Boolean, onOpen: () -> Unit) {
@@ -92,7 +111,7 @@ internal fun DrawSessionPanel(
 ) {
     Column(Modifier.fillMaxSize().background(S7.Workspace).padding(horizontal = 14.dp, vertical = 5.dp)) {
         if (paused) {
-            SceneHeader("Session objects", onBack, null)
+            SceneHeader("Session objects", onBack)
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 DeckLabel("Do not track is on", 14, S7.Muted)
             }
@@ -146,15 +165,18 @@ private fun SeatPicker(seat: DrawSeat?, enabled: Boolean, onSelect: (DrawSeat?) 
 }
 
 @Composable
-private fun SceneHeader(title: String, onBack: (() -> Unit)?, options: (@Composable () -> Unit)?) {
+private fun SceneHeader(
+    title: String,
+    onBack: () -> Unit,
+    backLabel: String = "Back to Device",
+    options: @Composable () -> Unit = {},
+) {
     Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (onBack != null) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Device", tint = S7.Text)
-            }
+        IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, backLabel, tint = S7.Text)
         }
-        DeckLabel(title, 17, S7.Text, Modifier.weight(1f).padding(start = if (onBack != null) 3.dp else 0.dp))
-        options?.invoke()
+        DeckLabel(title, 17, S7.Text, Modifier.weight(1f).padding(start = 3.dp))
+        options()
     }
 }
 
@@ -168,12 +190,12 @@ private enum class SceneOverlay { Draws, Details }
 @Composable
 private fun ColumnScope.SessionDrawViews(
     balls: List<DrawBall>,
+    onBack: () -> Unit,
     active: InProgressDraw? = null,
-    onBack: (() -> Unit)? = null,
+    backLabel: String = "Back to Device",
     simulate: (() -> Unit)? = null,
     canSimulate: Boolean = false,
 ) {
-    val focused = onBack != null
     var view by rememberSaveable { mutableStateOf(DrawView.Resin) }
     var page by rememberSaveable { mutableIntStateOf(0) }
     var inspectedId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -202,7 +224,7 @@ private fun ColumnScope.SessionDrawViews(
         inspectedId = ball.startMs
         overlay = SceneOverlay.Details
     }
-    SceneHeader(view.label, onBack) {
+    SceneHeader(view.label, onBack, backLabel) {
         Box {
             IconButton(onClick = { options = true }) {
                 Icon(Icons.Default.MoreVert, "Session options", tint = S7.Text)
@@ -231,16 +253,14 @@ private fun ColumnScope.SessionDrawViews(
     }
     if (stage == null) {
         Column(
-            if (focused) Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
-            else Modifier.fillMaxWidth(),
+            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             PersonRows(balls.filterNot { it.startMs == active?.startMs })
         }
     } else {
         LaunchedEffect(stage, visible, activeHere) { stage.show(visible, activeHere) }
-        val gallery = if (focused) Modifier.weight(1f) else Modifier
-        Box(gallery.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             SculptureCanvas(stage, view, selected?.startMs,
                 onBrowse = if (canBrowse) ::browse else null, onInspect = ::inspect)
             if (visible.isEmpty() && activeHere == null) {
