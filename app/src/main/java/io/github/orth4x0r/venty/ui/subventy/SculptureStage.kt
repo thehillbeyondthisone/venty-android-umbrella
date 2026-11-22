@@ -5,8 +5,7 @@ import android.os.SystemClock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -16,7 +15,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -25,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.lerp
@@ -32,11 +31,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
 import io.github.orth4x0r.venty.session.DrawBall
 import io.github.orth4x0r.venty.session.InProgressDraw
-import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.sqrt
 import kotlin.random.Random
 
@@ -44,8 +41,20 @@ internal enum class DrawView(val label: String) {
     Resin("Resin Window"), Mobile("Kinetic Mobile"), People("By person"),
 }
 
+/** Spread the rig vertically on a phone while keeping every bead and wire at a uniform scale. */
+internal class SculptureProjection(width: Float, height: Float) {
+    val unit = minOf(width / SCULPTURE_WIDTH, height / SCULPTURE_HEIGHT).coerceAtLeast(.001f)
+    private val side = (width / unit - SCULPTURE_WIDTH) / 2f
+    private val vertical = height / unit / SCULPTURE_HEIGHT
+
+    fun point(position: Offset) = Offset(position.x + side, position.y * vertical)
+
+    fun mark(mark: SculptureMark, enlargement: Float) =
+        mark.copy(center = point(mark.center), radius = mark.radius * enlargement)
+}
+
 internal class SculptureStage(private val view: DrawView) {
-    private data class Flight(val ball: DrawBall, val start: Long, val grow: Long) {
+    private data class Flight(val ball: DrawBall, val start: Long, val grow: Long, val zoomFrom: Float) {
         val end: Long get() = start + grow + 470L
     }
 
@@ -74,13 +83,14 @@ internal class SculptureStage(private val view: DrawView) {
         val arrival = draw == null && newest != null && active?.startMs == newest.startMs
         active = draw
         if (records != next) {
+            val previousZoom = enlargement
             records = next
             clearFlight()
             pull = null
             animateUntil = 0L
             if (view == DrawView.Mobile) mobile = KineticMobile(next, previous = mobile.takeIf { arrival })
             else resin = next.mapIndexed { i, ball -> ball.resinMark(i) }
-            if (arrival && ValueAnimator.areAnimatorsEnabled()) startFlight(newest, 0L)
+            if (arrival && ValueAnimator.areAnimatorsEnabled()) startFlight(newest, 0L, previousZoom)
         }
         invalidate()
     }
@@ -100,10 +110,11 @@ internal class SculptureStage(private val view: DrawView) {
         invalidate()
     }
 
-    fun hit(point: Offset): DrawBall? = marks()
+    fun hit(pixel: Offset, projection: SculptureProjection): DrawBall? = marks()
         .asSequence()
         .filterNot { it.ball.startMs == flight?.ball?.startMs }
-        .map { it to (it.center - point).getDistance() }
+        .map { projection.mark(it, enlargement) }
+        .map { it to (it.center - pixel / projection.unit).getDistance() }
         .filter { (mark, distance) -> distance <= maxOf(mark.radius + 5f, 24f) }
         .minByOrNull { it.second }?.first?.ball
 
@@ -150,9 +161,21 @@ internal class SculptureStage(private val view: DrawView) {
     }
 
     private fun marks() = mobile?.geometry()?.flatMap { branch -> branch.marks.map { it.mark } } ?: resin
+    private val enlargement: Float
+        get() {
+            val target = when (records.size) {
+                0, 1 -> if (view == DrawView.Mobile) 2.05f else 2.18f
+                2 -> if (view == DrawView.Mobile) 1.12f else 1.23f
+                else -> 1f
+            }
+            val animation = flight ?: return target
+            val phase = ((now - animation.start) / 470f).coerceIn(0f, 1f)
+            val ease = phase * phase * (3f - 2f * phase)
+            return animation.zoomFrom + (target - animation.zoomFrom) * ease
+        }
 
-    private fun startFlight(ball: DrawBall, grow: Long) {
-        flight = Flight(ball, SystemClock.uptimeMillis(), grow)
+    private fun startFlight(ball: DrawBall, grow: Long, zoomFrom: Float = enlargement) {
+        flight = Flight(ball, SystemClock.uptimeMillis(), grow, zoomFrom)
         replayingId = ball.startMs
         mobile?.releaseForArrival(ball.startMs)
     }
@@ -174,13 +197,13 @@ internal class SculptureStage(private val view: DrawView) {
     fun draw(scope: DrawScope, selectedId: Long?) = with(scope) {
         // Invalidate Canvas drawing directly as the simulation advances, without relaying out its controls.
         @Suppress("UNUSED_VARIABLE") val frame = revision
-        scale(size.width / SCULPTURE_WIDTH, size.height / SCULPTURE_HEIGHT, pivot = Offset.Zero) {
-            sculptureBackdrop(view == DrawView.Mobile)
+        val projection = SculptureProjection(size.width, size.height)
+        scale(projection.unit, projection.unit, pivot = Offset.Zero) {
             val inFlight = flight
             val rig = mobile
             val targets = if (rig != null) {
                 val geometry = rig.geometry()
-                drawRig(rig, geometry, hiddenId = inFlight?.ball?.startMs)
+                drawRig(rig, geometry, projection, hiddenId = inFlight?.ball?.startMs)
                 geometry.flatMap { branch -> branch.marks.map { it.mark } }
             } else resin
             for (target in targets) {
@@ -195,7 +218,8 @@ internal class SculptureStage(private val view: DrawView) {
                     else Offset(target.center.x + 9f, (target.center.y - 88f).coerceAtLeast(56f))
                     target.copy(center = start + (target.center - start) * time, radius = target.radius * sqrt(.10f + .90f * grow))
                 } else target
-                if (rig == null) drawResin(current, selected, hardened) else drawGlass(current, selected)
+                val displayed = projection.mark(current, enlargement)
+                if (rig == null) drawResin(displayed, selected, hardened) else drawGlass(displayed, selected)
             }
             active?.let { draw ->
                 val marker = SculptureMark(
@@ -203,7 +227,8 @@ internal class SculptureStage(private val view: DrawView) {
                     LiveOrigin,
                     sculptureRadius(if (ValueAnimator.areAnimatorsEnabled()) elapsedDraw else 800L),
                 )
-                if (rig == null) drawResin(marker, selected = false, hardened = 0f) else drawGlass(marker, selected = false)
+                val displayed = projection.mark(marker, enlargement)
+                if (rig == null) drawResin(displayed, selected = false, hardened = 0f) else drawGlass(displayed, selected = false)
             }
         }
     }
@@ -224,16 +249,16 @@ internal fun SculptureCanvas(
     val drag = if (view == DrawView.Mobile) Modifier.pointerInput(stage) {
         detectHorizontalDragGestures(
             onDragStart = { point ->
-                stage.hit(point.toStage(size))?.let(stage::beginPull)
+                stage.hit(point, SculptureProjection(size.width.toFloat(), size.height.toFloat()))?.let(stage::beginPull)
             },
             onDragEnd = { stage.endPull() },
             onDragCancel = { stage.endPull(cancelled = true) },
         ) { _, dx ->
-            stage.pullBy(dx * SCULPTURE_WIDTH / size.width.coerceAtLeast(1))
+            stage.pullBy(dx / SculptureProjection(size.width.toFloat(), size.height.toFloat()).unit)
         }
     } else Modifier
     Canvas(
-        Modifier.widthIn(max = 480.dp).aspectRatio(SCULPTURE_WIDTH / SCULPTURE_HEIGHT).clip(Deck.Shape)
+        Modifier.fillMaxSize()
             .semantics {
                 contentDescription = if (view == DrawView.Mobile)
                     "Hanging sculpture. Each color has a branch. Bead size represents draw duration."
@@ -241,57 +266,66 @@ internal fun SculptureCanvas(
                 if (onBrowse != null) onClick(label = "Browse draws") { onBrowse(); true }
             }
             .then(drag)
-            .pointerInput(stage) { detectTapGestures { stage.hit(it.toStage(size))?.let(inspect) } },
+            .pointerInput(stage) {
+                detectTapGestures { position ->
+                    stage.hit(position, SculptureProjection(size.width.toFloat(), size.height.toFloat()))?.let(inspect)
+                }
+            },
     ) { stage.draw(this, selectedId) }
 }
 
-private fun Offset.toStage(size: IntSize) = Offset(
-    x * SCULPTURE_WIDTH / size.width.coerceAtLeast(1),
-    y * SCULPTURE_HEIGHT / size.height.coerceAtLeast(1),
-)
-
-private val LiveOrigin = Offset(SCULPTURE_WIDTH / 2, 49f)
-private val SceneSize = Size(SCULPTURE_WIDTH, SCULPTURE_HEIGHT)
-private val Specks = Random(412).run { List(225) { Offset(nextFloat() * 384f + 18f, nextFloat() * 295f + 17f) } }
+private val LiveOrigin = Offset(SCULPTURE_WIDTH / 2, 43f)
 private val Brass = Color(0xFFD9C7A0)
 private val Wire = Color(0xA6C1CBC0)
 
-private fun DrawScope.sculptureBackdrop(mobile: Boolean) {
-    val background = if (mobile) listOf(Color(0xFF304547), Color(0xFF182C30), Color(0xFF101719))
-    else listOf(Color(0xFF44342B), Color(0xFF282320), Color(0xFF141316))
-    drawRect(Brush.radialGradient(background, center = Offset(179f, 149f), radius = 249f), size = SceneSize)
-    drawRoundRect(
-        Color(0x33D2C4A5), Offset(13f, 13f), Size(394f, 304f), CornerRadius(10f),
-        style = Stroke(1f),
-    )
-    for (point in Specks) drawCircle(Color(0x16E9D6BA), .55f, point)
-}
-
-private fun DrawScope.drawRig(model: KineticMobile, geometry: List<MobileBranch>, hiddenId: Long?) {
-    drawLine(Wire, Offset(model.pivot.x, 0f), model.pivot, 1.5f)
-    drawLine(Brass, model.pivot, model.beamPoint(0f), 1.5f)
-    drawLine(Color(0xFF0D1517), model.beamPoint(-170f, 61f), model.beamPoint(170f, 61f), 4f)
-    drawLine(Brass, model.beamPoint(-170f), model.beamPoint(170f), 2f)
-    for (x in -150..150 step 10) drawLine(Wire, model.beamPoint(x.toFloat(), 61f), model.beamPoint(x.toFloat(), 64f), .7f)
-    drawCircle(Brass, 3.2f, model.pivot)
+private fun DrawScope.drawRig(
+    model: KineticMobile,
+    geometry: List<MobileBranch>,
+    projection: SculptureProjection,
+    hiddenId: Long?,
+) {
+    fun beam(x: Float, y: Float = 59f) = projection.point(model.beamPoint(x, y))
+    val pivot = projection.point(model.pivot)
+    drawLine(Wire, Offset(pivot.x, 0f), pivot, 1.35f)
+    drawLine(Brass, pivot, beam(0f), 1.3f)
+    val left = beam(-170f)
+    val right = beam(170f)
+    drawLine(Color(0xB440855F), left + Offset(0f, 3f), right + Offset(0f, 3f), 5f)
+    drawLine(Color(0xFF3D2D21), left, right, 5.5f)
+    drawLine(Brush.horizontalGradient(listOf(Color(0xFFE0AC68), Color(0xFFFFE8AD), Color(0xFFC58F5C)),
+        startX = left.x, endX = right.x), left - Offset(0f, 1f), right - Offset(0f, 1f), 2.4f)
+    for (x in -150..150 step 10) {
+        val notch = beam(x.toFloat()) + Offset(0f, 3f)
+        drawLine(Wire.copy(alpha = .48f), notch, notch + Offset(0f, if (x % 50 == 0) 5f else 2.5f), .65f)
+    }
+    for (end in listOf(left, right)) {
+        drawCircle(Color(0xFF4C3321), 4.7f, end)
+        drawCircle(Brass, 2.1f, end - Offset(0f, 1f))
+    }
+    drawCircle(Color(0xFF694A30), 5f, pivot)
+    drawCircle(Brass, 2.8f, pivot)
     for (branch in geometry) {
-        val hooks = branch.marks.map { it.hook }.sortedBy { it.x }
-        drawLine(Wire, branch.beamPoint, branch.joint, 1f)
-        drawLine(Brass, branch.joint, hooks.first(), 1.3f)
-        drawLine(Brass, branch.joint, hooks.last(), 1.3f)
-        if (hooks.size > 1) drawLine(Brass, hooks.first(), hooks.last(), 1.5f)
-        drawCircle(Brass, 2.9f, branch.joint)
+        val hooks = branch.marks.map { projection.point(it.hook) }.sortedBy { it.x }
+        val joint = projection.point(branch.joint)
+        drawLine(Wire, projection.point(branch.beamPoint), joint, 1f)
+        drawLine(Brass, joint, hooks.first(), 1.3f)
+        drawLine(Brass, joint, hooks.last(), 1.3f)
+        if (hooks.size > 1) drawLine(Brass, hooks.first(), hooks.last(), 1.45f)
+        drawCircle(Brass, 2.9f, joint)
         for (item in branch.marks) {
-            drawCircle(Brass, 1.65f, item.hook)
-            if (item.mark.ball.startMs != hiddenId) drawLine(Wire, item.hook, item.mark.center, .9f)
+            val hook = projection.point(item.hook)
+            drawCircle(Brass, 1.65f, hook)
+            if (item.mark.ball.startMs != hiddenId) drawLine(Wire, hook, projection.point(item.mark.center), .9f)
         }
     }
-    val weight = model.counterweight
-    rotate(model.beamAngle * (180f / 3.1415927f), pivot = weight) {
+    val weight = projection.point(model.counterweight)
+    val slope = atan2(right.y - left.y, right.x - left.x)
+    rotate(slope * (180f / 3.1415927f), pivot = weight) {
         val top = weight - Offset(15f, 10f)
         val shade = Brush.verticalGradient(listOf(Color(0xFFF2D7A2), Color(0xFFAE813F), Color(0xFF715230)),
             startY = top.y, endY = top.y + 20f)
         drawRoundRect(shade, top, Size(30f, 20f), CornerRadius(4f))
+        drawRoundRect(Color(0xA7FFE4AD), top, Size(30f, 20f), CornerRadius(4f), style = Stroke(.65f))
         for (x in -6..6 step 4) drawLine(Color(0xFF695031), weight + Offset(x.toFloat(), -3f), weight + Offset(x.toFloat(), 4f), 1f)
     }
 }
@@ -299,23 +333,29 @@ private fun DrawScope.drawRig(model: KineticMobile, geometry: List<MobileBranch>
 private fun DrawScope.drawGlass(mark: SculptureMark, selected: Boolean) {
     val (ball, center, radius) = mark
     val color = seatColor(ball.seat)
-    val glow = lerp(color, Color.White, .68f)
+    val glow = lerp(color, Color(0xFFF7FFF8), .76f)
+    drawCircle(Brush.radialGradient(listOf(color.copy(alpha = .28f), Color.Transparent), center, radius * 2.35f),
+        radius * 2.35f, center)
     drawCircle(Color(0x83090E0E), radius + 1f, center + Offset(0f, 3f))
     drawCircle(Brush.radialGradient(
-        listOf(glow, color, color, lerp(color, Color(0xFF10191B), .72f)),
+        listOf(glow, color, lerp(color, Color(0xFF123538), .24f), lerp(color, Color(0xFF10191B), .86f)),
         center - Offset(radius * .24f, radius * .30f), radius * 1.40f,
     ), radius, center)
-    drawCircle(if (selected) glow else color.copy(alpha = .66f), radius, center, style = Stroke(if (selected) 1.7f else .8f))
+    drawCircle(if (selected) glow else color.copy(alpha = .75f), radius, center, style = Stroke(if (selected) 1.7f else .8f))
+    val bevel = radius * .86f
+    drawArc(color.copy(alpha = .86f), 19f, 117f, false,
+        center - Offset(bevel, bevel), Size(bevel * 2, bevel * 2), style = Stroke(1f))
     val shine = center - Offset(radius * .32f, radius * .36f)
     rotate(-25f, shine) {
         drawOval(glow.copy(alpha = .78f), shine - Offset(radius * .29f, radius * .12f), Size(radius * .58f, radius * .24f))
+        drawOval(Color.White.copy(alpha = .66f), shine - Offset(radius * .21f, radius * .08f), Size(radius * .34f, radius * .07f))
     }
 }
 
 private fun DrawScope.drawResin(mark: SculptureMark, selected: Boolean, hardened: Float) {
     val (ball, center, radius) = mark
     val color = seatColor(ball.seat)
-    val pale = lerp(color, Color.White, .66f)
+    val pale = lerp(color, Color(0xFFFFECD3), .68f)
     fun shape(at: Offset): Path {
         val corners = resinOutline(at, radius, ball.startMs, hardened)
         val first = (corners.last() + corners.first()) / 2f
@@ -327,12 +367,32 @@ private fun DrawScope.drawResin(mark: SculptureMark, selected: Boolean, hardened
         path.close()
         return path
     }
-    drawPath(shape(center + Offset(2f, 4f)), Color(0x990E0B0C))
+    drawCircle(Brush.radialGradient(listOf(color.copy(alpha = .28f), Color.Transparent), center, radius * 2.45f),
+        radius * 2.45f, center)
+    drawPath(shape(center + Offset(2f, 5f)), Color(0x990E0B0C))
     val outline = shape(center)
-    drawPath(outline, Brush.radialGradient(listOf(pale, color, lerp(color, Color(0xFF291D24), .63f)),
-        center - Offset(radius * .28f, radius * .24f), radius * 1.43f))
-    drawPath(outline, pale.copy(alpha = if (selected) .94f else .46f), style = Stroke(if (selected) 1.6f else .85f))
-    val bubble = Color.White.copy(alpha = .37f)
-    drawCircle(bubble, 1.7f, center + Offset(radius * .19f, -radius * .32f), style = Stroke(.65f))
-    drawCircle(bubble, 1f, center + Offset(radius * .39f, -radius * .14f), style = Stroke(.65f))
+    drawPath(outline, Brush.radialGradient(listOf(pale, color, lerp(color, Color(0xFF291D24), .8f)),
+        center - Offset(radius * .39f, radius * .49f), radius * 1.63f))
+    clipPath(outline) {
+        val depth = center + Offset(radius * .17f, radius * .36f)
+        drawCircle(Brush.radialGradient(listOf(Color(0x91422B62), Color.Transparent), depth, radius), radius, depth)
+        for (layer in 0..3) {
+            val sweep = radius * (.76f + layer * .11f)
+            drawArc(pale.copy(alpha = .22f - layer * .037f), 14f + layer * 7f, 117f, false,
+                center - Offset(sweep, sweep), Size(sweep * 2, sweep * 1.9f), style = Stroke(.75f))
+        }
+        val reflection = center - Offset(radius * .27f, radius * .40f)
+        rotate(-28f, reflection) {
+            drawOval(Brush.radialGradient(listOf(Color(0xE6FFF6DB), Color.Transparent), reflection, radius * .37f),
+                reflection - Offset(radius * .39f, radius * .13f), Size(radius * .78f, radius * .26f))
+        }
+        val inclusions = Random(ball.startMs)
+        repeat(if (radius > 22f) 12 else 5) {
+            val pore = center + Offset(inclusions.nextFloat() - .5f, inclusions.nextFloat() - .5f) * radius * 1.56f
+            val poreRadius = (.65f + inclusions.nextFloat() * 1.7f) * (radius / 27f).coerceIn(.48f, 1.4f)
+            drawCircle(pale.copy(alpha = .51f), poreRadius, pore, style = Stroke(.55f))
+            drawCircle(Color(0x76FFF7DF), poreRadius * .24f, pore - Offset(poreRadius * .27f, poreRadius * .32f))
+        }
+    }
+    drawPath(outline, pale.copy(alpha = if (selected) .94f else .59f), style = Stroke(if (selected) 1.6f else .9f))
 }

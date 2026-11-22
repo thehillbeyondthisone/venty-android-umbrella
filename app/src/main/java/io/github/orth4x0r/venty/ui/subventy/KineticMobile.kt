@@ -234,10 +234,10 @@ internal fun DrawBall.resinMark(index: Int): SculptureMark =
     SculptureMark(this, resinCenters[index], (sculptureRadius(durationMs) * 1.25f).coerceAtMost(29f))
 
 private val resinCenters = listOf(
-    Offset(127f, 121f), Offset(196f, 120f), Offset(269f, 135f),
-    Offset(103f, 181f), Offset(154f, 172f), Offset(232f, 187f),
-    Offset(164f, 230f), Offset(288f, 198f), Offset(221f, 249f),
-    Offset(103f, 244f), Offset(284f, 258f), Offset(335f, 237f),
+    Offset(210f, 156f), Offset(271f, 179f), Offset(154f, 182f),
+    Offset(170f, 106f), Offset(225f, 222f), Offset(266f, 110f),
+    Offset(115f, 137f), Offset(127f, 237f), Offset(322f, 142f),
+    Offset(300f, 232f), Offset(189f, 270f), Offset(283f, 278f),
 )
 
 internal fun resinOutline(center: Offset, radius: Float, seed: Long, irregularity: Float): List<Offset> =

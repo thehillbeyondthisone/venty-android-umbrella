@@ -6,14 +6,14 @@ This branch contains the **native Android app**, plus the earlier browser design
 
 ## Try the Android app
 
-1. On your Android phone, download SubVenty preview 9. If GitHub shows the file page, tap **Download raw file**. [Download the APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/blob/builds/subventy-preview9/subventy-0.4.0-preview9.apk?raw=true)
+1. On your Android phone, download SubVenty Preview 10. [Download the APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/releases/download/v0.4.0-subventy.10/subventy-0.4.0-preview10.apk)
 2. Open the downloaded APK. Android may ask you to allow installs from the browser or Files app you used.
 3. Launch **SubVenty**. Try **Demo Venty** or **Demo Volcano** first. Demo entries are labeled and stored separately from hardware entries.
 4. For a real device, allow Nearby devices/Bluetooth access, enable Bluetooth, select **Scan for devices**, then select your Venty or Volcano.
 
-The APK and checksum live on a separate branch. [Preview 9 build files](https://github.com/thehillbeyondthisone/venty-android-umbrella/tree/builds/subventy-preview9)
+The APK is also available from the build branch. [Direct APK download](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/refs/heads/builds/subventy-preview10/subventy-0.4.0-preview10.apk)
 
-Preview 9 is version **0.4.0-subventy.9** (code 17). Install it over an earlier preview to retain your local archive and preferences.
+Preview 10 is version **0.4.0-subventy.10** (code 18). Install it over an earlier preview to retain your local archive and preferences.
 
 Android 8.0+ is required. This preview uses a separate application ID (`io.github.thehillbeyondthisone.subventy`), so it can coexist with the upstream Venty app. Close/disconnect the other controller before connecting SubVenty to the same physical device.
 
@@ -27,11 +27,11 @@ You do **not** need to merge the PR, install Android Studio, or build anything y
 
 On Venty, open **Device → Session objects** and choose a seat under **Next draw**. The app assigns the selected color when a draw starts. The **⋮** menu switches sculptures and opens **By person** or **Browse draws**.
 
-- **Resin Window** grows a drop during each draw and sets it into the mosaic when the draw ends.
-- **Kinetic Mobile** hangs a glass bead from the person's branch. The brass counterweight shifts after the bead lands. Pull a bead sideways and release to pluck it.
+- **Resin Window** grows a drop during each draw and sets it into a full-screen field of layered resin when the draw ends.
+- **Kinetic Mobile** hangs lit glass beads from a brass rig spread across the view. The counterweight shifts after a bead lands. Pull a bead sideways and release to pluck it.
 - Tap a piece to see its duration and access **Replay draw** or **Pluck**. **By person** shows draw count, total time and average duration.
 
-Open a saved session under **Archive → Draw sessions** to view either sculpture in a dedicated viewer. The back arrow returns to the filtered list. Finished draws are included in JSON export. Venty estimates draw timing from its shutoff timer. Closely spaced resets on the same seat may become one draw. **Do not track** pauses collection. In Demo Venty, **Simulate draw** is under **⋮** once the device reaches its target. [Preview 9 screenshots and verification](docs/native-preview/iteration9/README.md)
+Open a saved session under **Archive → Draw sessions** to view either sculpture in a dedicated viewer. The back arrow returns to the filtered list. Finished draws are included in JSON export. Venty estimates draw timing from its shutoff timer. Closely spaced resets on the same seat may become one draw. **Do not track** pauses collection. In Demo Venty, **Simulate draw** is under **⋮** once the device reaches its target. [Preview 10 screenshots and verification](docs/native-preview/iteration10/README.md)
 
 ## Session collections
 
@@ -52,7 +52,7 @@ Archive search and Field Notes display local records. Device-reported reached ta
 
 ## Scope and validation
 
-This is a native test APK. The debug build, unit tests and Android lint run locally. The Android emulator uses the built-in device simulators. Physical Venty and Volcano behavior needs a hardware check. [Preview 9 test results](docs/native-preview/iteration9/README.md)
+This is a native test APK. The debug build, unit tests and Android lint run locally. The Android emulator uses the built-in device simulators. Physical Venty and Volcano behavior needs a hardware check. [Preview 10 test results](docs/native-preview/iteration10/README.md)
 
 The APK is debug-signed for personal testing. Keep the signing key for future compatible updates; do not publish it in the repository. The in-app updater points to **this fork**, not the upstream release feed. Draft/prerelease builds are installed manually.
 

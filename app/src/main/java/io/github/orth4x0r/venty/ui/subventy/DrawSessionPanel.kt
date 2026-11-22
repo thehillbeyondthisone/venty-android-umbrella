@@ -61,22 +61,23 @@ internal fun DrawArchive(entries: List<CollectionEntry>, scope: String, onOpen: 
 
 @Composable
 internal fun SavedDrawSession(entry: CollectionEntry?, onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(S7.Workspace).padding(horizontal = 14.dp, vertical = 5.dp)) {
-        if (entry == null) {
+    if (entry == null) {
+        Column(Modifier.fillMaxSize().background(S7.Workspace).padding(horizontal = 14.dp, vertical = 5.dp)) {
             SceneHeader("Saved session", onBack, backLabel = "Back to Draw sessions")
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 DeckLabel("This session is unavailable", 14, S7.Muted)
             }
-        } else {
-            key(entry.id) {
-                SessionDrawViews(entry.drawBalls, onBack = onBack, backLabel = "Back to Draw sessions")
-            }
+        }
+        return
+    }
+    key(entry.id) {
+        SessionDrawViews(entry.drawBalls, onBack = onBack, backLabel = "Back to Draw sessions") {
             val prefix = if (entry.device.startsWith("demo:")) "Demo · " else ""
             Text(
                 prefix + sessionDate(entry),
-                Modifier.padding(top = 8.dp, bottom = 10.dp)
-                    .background(Color(0xFF2B2318), Deck.Shape)
-                    .border(1.dp, Color(0xFF594628), Deck.Shape)
+                Modifier.padding(start = 16.dp, top = 8.dp, bottom = 12.dp)
+                    .background(Color(0xE6241B14), Deck.Shape)
+                    .border(1.dp, Color(0xFF665032), Deck.Shape)
                     .padding(horizontal = 10.dp, vertical = 7.dp),
                 color = S7.Link, fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 16.sp,
             )
@@ -109,22 +110,21 @@ internal fun DrawSessionPanel(
     simulate: (() -> Unit)?,
     canSimulate: Boolean,
 ) {
-    Column(Modifier.fillMaxSize().background(S7.Workspace).padding(horizontal = 14.dp, vertical = 5.dp)) {
-        if (paused) {
+    if (paused) {
+        Column(Modifier.fillMaxSize().background(S7.Workspace).padding(horizontal = 14.dp, vertical = 5.dp)) {
             SceneHeader("Session objects", onBack)
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 DeckLabel("Do not track is on", 14, S7.Muted)
             }
-        } else {
-            Column(Modifier.weight(1f).fillMaxWidth()) {
-                SessionDrawViews(
-                    balls = tray.balls,
-                    active = tray.active,
-                    onBack = onBack,
-                    simulate = simulate,
-                    canSimulate = canSimulate,
-                )
+            if (stopHeating != null) {
+                DeckKey("Turn heater off", stopHeating, Modifier.fillMaxWidth().padding(bottom = 6.dp), enabled, KeyFinish.Rust)
             }
+        }
+        return
+    }
+    SessionDrawViews(tray.balls, onBack = onBack, active = tray.active,
+        simulate = simulate, canSimulate = canSimulate) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -134,10 +134,10 @@ internal fun DrawSessionPanel(
                 val message = tray.active?.let { "Drawing · ${seatName(it.seat)}" } ?: status
                 message?.let { DeckLabel(it, 11, S7.Muted) }
             }
-        }
-        if (stopHeating != null) {
-            DeckKey("Turn heater off", stopHeating,
-                Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 6.dp), enabled, KeyFinish.Rust)
+            if (stopHeating != null) {
+                DeckKey("Turn heater off", stopHeating,
+                    Modifier.fillMaxWidth().padding(top = 3.dp, bottom = 10.dp), enabled, KeyFinish.Rust)
+            }
         }
     }
 }
@@ -188,13 +188,14 @@ private fun SeatSwatch(seat: DrawSeat?) {
 private enum class SceneOverlay { Draws, Details }
 
 @Composable
-private fun ColumnScope.SessionDrawViews(
+private fun SessionDrawViews(
     balls: List<DrawBall>,
     onBack: () -> Unit,
     active: InProgressDraw? = null,
     backLabel: String = "Back to Device",
     simulate: (() -> Unit)? = null,
     canSimulate: Boolean = false,
+    footer: @Composable () -> Unit,
 ) {
     var view by rememberSaveable { mutableStateOf(DrawView.Resin) }
     var page by rememberSaveable { mutableIntStateOf(0) }
@@ -224,53 +225,61 @@ private fun ColumnScope.SessionDrawViews(
         inspectedId = ball.startMs
         overlay = SceneOverlay.Details
     }
-    SceneHeader(view.label, onBack, backLabel) {
-        Box {
-            IconButton(onClick = { options = true }) {
-                Icon(Icons.Default.MoreVert, "Session options", tint = S7.Text)
-            }
-            DropdownMenu(expanded = options, onDismissRequest = { options = false }) {
-                DrawView.entries.filter { it != view }.forEach { mode ->
-                    DropdownMenuItem(text = { Text(mode.label) }, onClick = {
-                        view = mode
-                        options = false
-                    })
+    Box(Modifier.fillMaxSize().background(S7.Workspace)) {
+        if (stage != null) SculptureBackdrop(view, Modifier.matchParentSize())
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.padding(horizontal = 12.dp)) {
+                SceneHeader(view.label, onBack, backLabel) {
+                    Box {
+                        IconButton(onClick = { options = true }) {
+                            Icon(Icons.Default.MoreVert, "Session options", tint = S7.Text)
+                        }
+                        DropdownMenu(expanded = options, onDismissRequest = { options = false }) {
+                            DrawView.entries.filter { it != view }.forEach { mode ->
+                                DropdownMenuItem(text = { Text(mode.label) }, onClick = {
+                                    view = mode
+                                    options = false
+                                })
+                            }
+                            if (stage != null && canBrowse) {
+                                DropdownMenuItem(text = { Text("Browse draws") }, onClick = {
+                                    options = false
+                                    browse()
+                                })
+                            }
+                            if (simulate != null) {
+                                DropdownMenuItem(text = { Text("Simulate draw") }, enabled = canSimulate, onClick = {
+                                    options = false
+                                    simulate()
+                                })
+                            }
+                        }
+                    }
                 }
-                if (stage != null && canBrowse) {
-                    DropdownMenuItem(text = { Text("Browse draws") }, onClick = {
-                        options = false
-                        browse()
-                    })
+            }
+            if (stage == null) {
+                Column(
+                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    PersonRows(balls.filterNot { it.startMs == active?.startMs })
                 }
-                if (simulate != null) {
-                    DropdownMenuItem(text = { Text("Simulate draw") }, enabled = canSimulate, onClick = {
-                        options = false
-                        simulate()
-                    })
+            } else {
+                LaunchedEffect(stage, visible, activeHere) { stage.show(visible, activeHere) }
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    SculptureCanvas(stage, view, selected?.startMs,
+                        onBrowse = if (canBrowse) ::browse else null, onInspect = ::inspect)
+                    if (visible.isEmpty() && activeHere == null) {
+                        DeckLabel("Finished draws will appear here", 12, S7.Muted)
+                    }
+                }
+                if (current > 0) {
+                    TextButton(onClick = { page = 0; inspectedId = null }, modifier = Modifier.padding(start = 10.dp)) {
+                        DeckLabel("Back to latest draws", 12, S7.Text)
+                    }
                 }
             }
-        }
-    }
-    if (stage == null) {
-        Column(
-            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            PersonRows(balls.filterNot { it.startMs == active?.startMs })
-        }
-    } else {
-        LaunchedEffect(stage, visible, activeHere) { stage.show(visible, activeHere) }
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            SculptureCanvas(stage, view, selected?.startMs,
-                onBrowse = if (canBrowse) ::browse else null, onInspect = ::inspect)
-            if (visible.isEmpty() && activeHere == null) {
-                DeckLabel("Finished draws will appear here", 12, S7.Muted)
-            }
-        }
-        if (current > 0) {
-            TextButton(onClick = { page = 0; inspectedId = null }) {
-                DeckLabel("Back to latest draws", 12, S7.Text)
-            }
+            footer()
         }
     }
 
