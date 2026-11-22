@@ -168,8 +168,10 @@ fun SubVentyScreen(
         Column(
             Modifier.fillMaxSize().background(Deck.Graphite).safeDrawingPadding(),
         ) {
-            InstrumentHeader(connection, status, kind, controller)
-            if (page != Page.Device) DeckStripe()
+            if (page != Page.DrawObjects) {
+                InstrumentHeader(connection, status, kind, controller)
+                if (page != Page.Device) DeckStripe()
+            }
             Box(Modifier.weight(1f).fillMaxWidth().background(if (page == Page.Device) Deck.Ivory else S7.Workspace)) {
                 screenState.SaveableStateProvider(page.name) {
                     when (page) {
@@ -181,25 +183,24 @@ fun SubVentyScreen(
                             } else InstrumentConnection(controller, connection, permissions, bluetoothOn, onGrant, onEnableBluetooth)
                         }
                         Page.DrawObjects -> {
-                            Column(Modifier.fillMaxSize().background(Deck.Graphite)) {
-                                Column(
-                                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    DeckKey("‹ Device", { page = Page.Device }, finish = KeyFinish.Graphite)
-                                    DrawSessionPanel(
-                                        draws, paused, enabled, app.sessions::selectDrawSeat,
-                                        simulate = if (demo) controller::simulateDemoDraw else null,
-                                        canSimulate = enabled && heaterOn && status?.setpointReached == true && draws.active == null,
-                                    )
-                                }
-                                if (heaterOn) {
-                                    DeckKey("Turn heater off", {
-                                        controller.stopRamp()
-                                        controller.setHeaterMode(HeaterMode.Off)
-                                    }, Modifier.fillMaxWidth().padding(horizontal = 12.dp), enabled, KeyFinish.Rust)
-                                }
+                            val ready = status?.setpointReached == true
+                            val drawStatus = when {
+                                !enabled -> if (activeConnection) "Reconnecting" else "Disconnected"
+                                heaterOn && ready -> "Ready"
+                                heaterOn -> "Heating"
+                                else -> null
                             }
+                            DrawSessionPanel(
+                                draws, paused, enabled, app.sessions::selectDrawSeat,
+                                onBack = { page = Page.Device },
+                                status = drawStatus,
+                                stopHeating = if (heaterOn) ({
+                                    controller.stopRamp()
+                                    controller.setHeaterMode(HeaterMode.Off)
+                                }) else null,
+                                simulate = if (demo) controller::simulateDemoDraw else null,
+                                canSimulate = enabled && heaterOn && ready && draws.active == null,
+                            )
                         }
                         Page.DeviceSettings -> FullDeviceSettings(app, controller, status.takeIf { enabled }, kind,
                             onFind = { window = "find" }, onBack = { page = Page.Settings })
@@ -305,7 +306,7 @@ fun SubVentyScreen(
                     }
                 }
             }
-            Row(
+            if (page != Page.DrawObjects) Row(
                 Modifier.fillMaxWidth().padding(7.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {

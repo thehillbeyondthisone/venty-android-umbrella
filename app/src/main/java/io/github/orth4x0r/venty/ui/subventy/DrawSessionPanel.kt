@@ -6,9 +6,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -51,9 +60,9 @@ internal fun DrawArchive(entries: List<CollectionEntry>, scope: String) {
         }
     } else {
         S7Button("‹ Draw sessions", { selectedId = null })
-        DeckPanel {
-            DeckLabel(date(selected), 15)
-            if (selected.device.startsWith("demo:")) DeckLabel("Demo session", 11, Deck.Muted)
+        DeckLabel(date(selected), 15, S7.Text)
+        if (selected.device.startsWith("demo:")) DeckLabel("Demo session", 11, S7.Muted)
+        Column(Modifier.fillMaxWidth()) {
             key(selected.id) { SessionDrawViews(selected.drawBalls) }
         }
     }
@@ -75,129 +84,230 @@ internal fun DrawSessionPanel(
     paused: Boolean,
     enabled: Boolean,
     onSelect: (DrawSeat?) -> Unit,
+    onBack: () -> Unit,
+    status: String?,
+    stopHeating: (() -> Unit)?,
     simulate: (() -> Unit)?,
     canSimulate: Boolean,
 ) {
-    DeckPanel {
-        DeckLabel("Session objects", 17)
+    Column(Modifier.fillMaxSize().background(S7.Workspace).padding(horizontal = 14.dp, vertical = 5.dp)) {
         if (paused) {
-            DeckLabel("Do not track is on. New draws are paused.", 11, Deck.Muted)
-            return@DeckPanel
-        }
-        val active = tray.active
-        var choosingSeat by remember { mutableStateOf(false) }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(Modifier.weight(1f)) {
-                DeckKey("Next draw · ${seatName(tray.selected)}  ▾", { choosingSeat = true },
-                    Modifier.fillMaxWidth(), enabled, swatch = seatColor(tray.selected))
-                DropdownMenu(expanded = choosingSeat, onDismissRequest = { choosingSeat = false }) {
-                    (listOf(null) + DrawSeat.entries).forEach { seat ->
-                        DropdownMenuItem(text = { Text(seatName(seat)) }, onClick = {
-                            onSelect(seat)
-                            choosingSeat = false
-                        })
-                    }
-                }
+            SceneHeader("Session objects", onBack, null)
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                DeckLabel("Do not track is on", 14, S7.Muted)
             }
-            if (simulate != null) {
-                DeckKey("Simulate draw", simulate, Modifier.widthIn(min = 96.dp),
-                    enabled = canSimulate, finish = KeyFinish.Graphite)
+        } else {
+            Column(Modifier.weight(1f).fillMaxWidth()) {
+                SessionDrawViews(
+                    balls = tray.balls,
+                    active = tray.active,
+                    onBack = onBack,
+                    simulate = simulate,
+                    canSimulate = canSimulate,
+                )
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SeatPicker(tray.selected, enabled, onSelect)
+                val message = tray.active?.let { "Drawing · ${seatName(it.seat)}" } ?: status
+                message?.let { DeckLabel(it, 11, S7.Muted) }
             }
         }
-        if (active != null) DeckLabel("Drawing · ${seatName(active.seat)}", 12, Deck.Muted)
-        SessionDrawViews(tray.balls, active = active)
+        if (stopHeating != null) {
+            DeckKey("Turn heater off", stopHeating,
+                Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 6.dp), enabled, KeyFinish.Rust)
+        }
     }
 }
 
 @Composable
-private fun SessionDrawViews(balls: List<DrawBall>, active: InProgressDraw? = null) {
-    var view by rememberSaveable { mutableStateOf(DrawView.Resin) }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        for (candidate in DrawView.entries) {
-            DeckKey(candidate.label, { view = candidate }, Modifier.weight(1f),
-                active = view == candidate, finish = KeyFinish.Graphite)
+private fun SeatPicker(seat: DrawSeat?, enabled: Boolean, onSelect: (DrawSeat?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { open = true }, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp)) {
+            DeckLabel("Next draw", 12, if (enabled) S7.Muted else S7.Muted.copy(alpha = .55f))
+            Spacer(Modifier.width(7.dp))
+            SeatSwatch(seat)
+            Spacer(Modifier.width(5.dp))
+            DeckLabel("${seatName(seat)}  ▾", 12, if (enabled) S7.Text else S7.Muted.copy(alpha = .55f))
         }
-    }
-    if (view == DrawView.People) {
-        PersonRows(balls.filterNot { it.startMs == active?.startMs })
-    } else {
-        SessionSculpture(view, balls, active)
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            sculptureSeats.forEach { option ->
+                DropdownMenuItem(text = { Text(seatName(option)) }, leadingIcon = { SeatSwatch(option) }, onClick = {
+                    onSelect(option)
+                    open = false
+                })
+            }
+        }
     }
 }
 
 @Composable
-private fun SessionSculpture(
-    view: DrawView,
+private fun SceneHeader(title: String, onBack: (() -> Unit)?, options: (@Composable () -> Unit)?) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (onBack != null) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Device", tint = S7.Text)
+            }
+        }
+        DeckLabel(title, 17, S7.Text, Modifier.weight(1f).padding(start = if (onBack != null) 3.dp else 0.dp))
+        options?.invoke()
+    }
+}
+
+@Composable
+private fun SeatSwatch(seat: DrawSeat?) {
+    Box(Modifier.size(8.dp).background(seatColor(seat), CircleShape))
+}
+
+private enum class SceneOverlay { Draws, Details }
+
+@Composable
+private fun ColumnScope.SessionDrawViews(
     balls: List<DrawBall>,
-    active: InProgressDraw?,
+    active: InProgressDraw? = null,
+    onBack: (() -> Unit)? = null,
+    simulate: (() -> Unit)? = null,
+    canSimulate: Boolean = false,
 ) {
+    val focused = onBack != null
+    var view by rememberSaveable { mutableStateOf(DrawView.Resin) }
     var page by rememberSaveable { mutableIntStateOf(0) }
-    var selectedId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var inspect by remember { mutableStateOf(false) }
+    var inspectedId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var browsePage by rememberSaveable { mutableIntStateOf(0) }
+    var overlay by rememberSaveable { mutableStateOf<SceneOverlay?>(null) }
+    var options by remember { mutableStateOf(false) }
     val lastPage = (balls.size - 1).coerceAtLeast(0) / SCULPTURE_PAGE_SIZE
     val current = page.coerceIn(0, lastPage)
-    val end = (balls.size - current * SCULPTURE_PAGE_SIZE).coerceAtLeast(0)
-    val start = (end - SCULPTURE_PAGE_SIZE).coerceAtLeast(0)
-    val slice = balls.subList(start, end)
+    val visible = drawPage(balls, current)
     val activeHere = active.takeIf { current == 0 }
-    val selectable = slice.filterNot { it.startMs == activeHere?.startMs }
-    val selected = selectable.firstOrNull { it.startMs == selectedId } ?: selectable.lastOrNull()
-    val stage = remember(view, current) { SculptureStage(view) }
+    val selected = visible.firstOrNull { it.startMs == inspectedId && it.startMs != activeHere?.startMs }
+    val stage = remember(view, current) { if (view != DrawView.People) SculptureStage(view) else null }
+    val canBrowse = balls.any { it.startMs != active?.startMs }
     LaunchedEffect(lastPage) {
         if (page > lastPage) page = lastPage
     }
-    LaunchedEffect(stage, slice, activeHere) {
-        stage.show(slice, activeHere)
+    LaunchedEffect(overlay, selected, canBrowse) {
+        if ((overlay == SceneOverlay.Details && selected == null) ||
+            (overlay == SceneOverlay.Draws && !canBrowse)) overlay = null
     }
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        SculptureCanvas(stage, view, selected?.startMs) { selectedId = it.startMs }
+    fun browse() {
+        browsePage = current
+        overlay = SceneOverlay.Draws
     }
-    if (selected != null) {
-        val motion = ValueAnimator.areAnimatorsEnabled()
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(Modifier.weight(1.2f)) {
-                DeckKey("${seatName(selected.seat)} · ${drawSeconds(selected.durationMs)}  ▾", { inspect = true },
-                    Modifier.fillMaxWidth(), swatch = seatColor(selected.seat))
-                DropdownMenu(expanded = inspect, onDismissRequest = { inspect = false }) {
-                    selectable.forEachIndexed { index, ball ->
-                        DropdownMenuItem(
-                            text = { Text("${start + index + 1}. ${seatName(ball.seat)} · ${drawSeconds(ball.durationMs)}") },
-                            onClick = {
-                                selectedId = ball.startMs
-                                inspect = false
-                            },
-                        )
+    fun inspect(ball: DrawBall) {
+        inspectedId = ball.startMs
+        overlay = SceneOverlay.Details
+    }
+    SceneHeader(view.label, onBack) {
+        Box {
+            IconButton(onClick = { options = true }) {
+                Icon(Icons.Default.MoreVert, "Session options", tint = S7.Text)
+            }
+            DropdownMenu(expanded = options, onDismissRequest = { options = false }) {
+                DrawView.entries.filter { it != view }.forEach { mode ->
+                    DropdownMenuItem(text = { Text(mode.label) }, onClick = {
+                        view = mode
+                        options = false
+                    })
+                }
+                if (stage != null && canBrowse) {
+                    DropdownMenuItem(text = { Text("Browse draws") }, onClick = {
+                        options = false
+                        browse()
+                    })
+                }
+                if (simulate != null) {
+                    DropdownMenuItem(text = { Text("Simulate draw") }, enabled = canSimulate, onClick = {
+                        options = false
+                        simulate()
+                    })
+                }
+            }
+        }
+    }
+    if (stage == null) {
+        Column(
+            if (focused) Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
+            else Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            PersonRows(balls.filterNot { it.startMs == active?.startMs })
+        }
+    } else {
+        LaunchedEffect(stage, visible, activeHere) { stage.show(visible, activeHere) }
+        val gallery = if (focused) Modifier.weight(1f) else Modifier
+        Box(gallery.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            SculptureCanvas(stage, view, selected?.startMs,
+                onBrowse = if (canBrowse) ::browse else null, onInspect = ::inspect)
+            if (visible.isEmpty() && activeHere == null) {
+                DeckLabel("Finished draws will appear here", 12, S7.Muted)
+            }
+        }
+        if (current > 0) {
+            TextButton(onClick = { page = 0; inspectedId = null }) {
+                DeckLabel("Back to latest draws", 12, S7.Text)
+            }
+        }
+    }
+
+    when (overlay) {
+        SceneOverlay.Draws -> if (stage != null && canBrowse) {
+            val browsing = browsePage.coerceIn(0, lastPage)
+            UtilityWindow("Recorded draws", { overlay = null }) {
+                drawPage(balls, browsing).filterNot { it.startMs == active?.startMs }.forEach { ball ->
+                    ArchiveRow(seatName(ball.seat), drawSeconds(ball.durationMs)) {
+                        page = browsing
+                        inspect(ball)
+                    }
+                }
+                if (lastPage > 0) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        S7Button("Newer", { browsePage = browsing - 1 }, enabled = browsing > 0)
+                        S7Button("Older", { browsePage = browsing + 1 }, enabled = browsing < lastPage)
                     }
                 }
             }
-            if (view == DrawView.Mobile && motion) {
-                DeckKey("Pluck", { stage.pluck(selected.startMs) }, Modifier.weight(.64f),
-                    enabled = stage.replayingId != selected.startMs, finish = KeyFinish.Graphite)
-            }
-            if (motion) {
-                DeckKey("Replay draw", { stage.replay(selected) }, Modifier.weight(.95f),
-                    enabled = stage.replayingId == null, finish = KeyFinish.Teal)
+        }
+        SceneOverlay.Details -> if (stage != null && selected != null) {
+            UtilityWindow("Draw details", { overlay = null }) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    SeatSwatch(selected.seat)
+                    DeckLabel("${seatName(selected.seat)} · ${drawSeconds(selected.durationMs)}", 17, S7.Text)
+                }
+                if (ValueAnimator.areAnimatorsEnabled()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DeckKey("Replay draw", {
+                            overlay = null
+                            stage.replay(selected)
+                        }, Modifier.weight(1f), enabled = stage.replayingId == null, finish = KeyFinish.Teal)
+                        if (view == DrawView.Mobile) {
+                            DeckKey("Pluck", {
+                                overlay = null
+                                stage.pluck(selected.startMs)
+                            }, Modifier.weight(1f), enabled = stage.replayingId != selected.startMs, finish = KeyFinish.Graphite)
+                        }
+                    }
+                }
             }
         }
-        if (view == DrawView.Mobile && motion) DeckLabel("Pull a bead sideways and release.", 11, Deck.Muted)
-    } else if (activeHere == null) {
-        DeckLabel("Finished draws will appear here.", 11, Deck.Muted)
+        null -> Unit
     }
-    if (lastPage > 0) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            DeckKey("Newer", { page = current - 1; selectedId = null }, enabled = current > 0)
-            DeckLabel("${start + 1}–$end of ${balls.size}", 11, Deck.Muted, Modifier.weight(1f))
-            DeckKey("Older", { page = current + 1; selectedId = null }, enabled = current < lastPage)
-        }
-    }
+}
+
+private fun drawPage(balls: List<DrawBall>, page: Int): List<DrawBall> {
+    val end = (balls.size - page * SCULPTURE_PAGE_SIZE).coerceAtLeast(0)
+    return balls.subList((end - SCULPTURE_PAGE_SIZE).coerceAtLeast(0), end)
 }
 
 @Composable
 private fun PersonRows(balls: List<DrawBall>) {
     val groups = remember(balls) { balls.groupBy { it.seat } }
     if (balls.isEmpty()) {
-        DeckLabel("Finished draws will appear here by color.", 11, Deck.Muted)
+        DeckLabel("Finished draws will appear here by color.", 11, S7.Muted)
         return
     }
     (DrawSeat.entries + listOf<DrawSeat?>(null)).forEach { seat ->

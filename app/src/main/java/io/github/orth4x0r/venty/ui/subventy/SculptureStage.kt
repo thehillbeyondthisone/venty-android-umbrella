@@ -6,7 +6,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +30,7 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -210,18 +210,21 @@ internal class SculptureStage(private val view: DrawView) {
 }
 
 @Composable
-internal fun SculptureCanvas(stage: SculptureStage, view: DrawView, selectedId: Long?, onSelect: (DrawBall) -> Unit) {
-    val select by rememberUpdatedState(onSelect)
+internal fun SculptureCanvas(
+    stage: SculptureStage,
+    view: DrawView,
+    selectedId: Long?,
+    onBrowse: (() -> Unit)?,
+    onInspect: (DrawBall) -> Unit,
+) {
+    val inspect by rememberUpdatedState(onInspect)
     LaunchedEffect(stage, stage.moving) {
         while (stage.moving) withFrameNanos { stage.tick() }
     }
     val drag = if (view == DrawView.Mobile) Modifier.pointerInput(stage) {
         detectHorizontalDragGestures(
             onDragStart = { point ->
-                stage.hit(point.toStage(size))?.let { ball ->
-                    select(ball)
-                    stage.beginPull(ball)
-                }
+                stage.hit(point.toStage(size))?.let(stage::beginPull)
             },
             onDragEnd = { stage.endPull() },
             onDragCancel = { stage.endPull(cancelled = true) },
@@ -230,14 +233,15 @@ internal fun SculptureCanvas(stage: SculptureStage, view: DrawView, selectedId: 
         }
     } else Modifier
     Canvas(
-        Modifier.widthIn(max = 396.dp).fillMaxWidth().aspectRatio(SCULPTURE_WIDTH / SCULPTURE_HEIGHT).clip(Deck.Shape)
+        Modifier.widthIn(max = 480.dp).aspectRatio(SCULPTURE_WIDTH / SCULPTURE_HEIGHT).clip(Deck.Shape)
             .semantics {
                 contentDescription = if (view == DrawView.Mobile)
                     "Hanging sculpture. Each color has a branch. Bead size represents draw duration."
                 else "Resin mosaic. Each piece represents one draw and its size represents duration."
+                if (onBrowse != null) onClick(label = "Browse draws") { onBrowse(); true }
             }
             .then(drag)
-            .pointerInput(stage) { detectTapGestures { stage.hit(it.toStage(size))?.let(select) } },
+            .pointerInput(stage) { detectTapGestures { stage.hit(it.toStage(size))?.let(inspect) } },
     ) { stage.draw(this, selectedId) }
 }
 
