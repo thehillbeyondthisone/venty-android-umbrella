@@ -3,7 +3,8 @@ package io.github.orth4x0r.venty.ui.subventy
 import android.animation.ValueAnimator
 import android.os.SystemClock
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -28,11 +29,13 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import io.github.orth4x0r.venty.session.DrawBall
 import io.github.orth4x0r.venty.session.InProgressDraw
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -246,17 +249,45 @@ internal fun SculptureCanvas(
     LaunchedEffect(stage, stage.moving) {
         while (stage.moving) withFrameNanos { stage.tick() }
     }
-    val drag = if (view == DrawView.Mobile) Modifier.pointerInput(stage) {
-        detectHorizontalDragGestures(
-            onDragStart = { point ->
-                stage.hit(point, SculptureProjection(size.width.toFloat(), size.height.toFloat()))?.let(stage::beginPull)
-            },
-            onDragEnd = { stage.endPull() },
-            onDragCancel = { stage.endPull(cancelled = true) },
-        ) { _, dx ->
-            stage.pullBy(dx / SculptureProjection(size.width.toFloat(), size.height.toFloat()).unit)
+    val gestures = Modifier.pointerInput(stage, view) {
+        if (view != DrawView.Mobile) {
+            detectTapGestures { position ->
+                stage.hit(position, SculptureProjection(size.width.toFloat(), size.height.toFloat()))?.let(inspect)
+            }
+        } else awaitEachGesture {
+            val down = awaitFirstDown()
+            val projection = SculptureProjection(size.width.toFloat(), size.height.toFloat())
+            // Lock onto the bead before the pointer crosses slop. A quick flick can cross its entire width.
+            val bead = stage.hit(down.position, projection) ?: return@awaitEachGesture
+            var pulling = false
+            try {
+                while (true) {
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                    if (change.isConsumed) break
+                    val offset = change.position - down.position
+                    if (!change.pressed) {
+                        if (pulling) stage.endPull()
+                        else if (offset.getDistance() <= viewConfiguration.touchSlop) inspect(bead)
+                        change.consume()
+                        break
+                    }
+                    if (pulling) {
+                        stage.pullBy(change.positionChange().x / projection.unit)
+                        change.consume()
+                    } else if (abs(offset.x) > viewConfiguration.touchSlop && abs(offset.x) >= abs(offset.y)) {
+                        stage.beginPull(bead)
+                        stage.pullBy(offset.x / projection.unit)
+                        pulling = true
+                        change.consume()
+                    } else if (abs(offset.y) > viewConfiguration.touchSlop) {
+                        break
+                    }
+                }
+            } finally {
+                if (pulling) stage.endPull(cancelled = true)
+            }
         }
-    } else Modifier
+    }
     Canvas(
         Modifier.fillMaxSize()
             .semantics {
@@ -265,12 +296,7 @@ internal fun SculptureCanvas(
                 else "Resin mosaic. Each piece represents one draw and its size represents duration."
                 if (onBrowse != null) onClick(label = "Browse draws") { onBrowse(); true }
             }
-            .then(drag)
-            .pointerInput(stage) {
-                detectTapGestures { position ->
-                    stage.hit(position, SculptureProjection(size.width.toFloat(), size.height.toFloat()))?.let(inspect)
-                }
-            },
+            .then(gestures),
     ) { stage.draw(this, selectedId) }
 }
 
