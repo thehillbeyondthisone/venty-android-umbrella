@@ -1,6 +1,6 @@
 # SubVenty Preview 11
 
-[Download the signed APK](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/refs/heads/builds/subventy-preview11/subventy-0.4.0-preview11.apk) · [Download the ZIP and extract the APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/archive/refs/heads/builds/subventy-preview11.zip)
+[Download the signed APK](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/787dbd59a323eb6bbfdb76c2cdf146da7f92c203/subventy-0.4.0-preview11.apk) · [Download the ZIP and extract the APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/archive/787dbd59a323eb6bbfdb76c2cdf146da7f92c203.zip)
 
 In **Device → Session objects**, the art starts as soon as SubVenty detects a draw. **Resin Window** lights up with moving ribbons that surround a growing drop. **Kinetic Mobile** lights a filament from the rail to the forming glass, with arcs sweeping around the bead. When the draw ends, the light fades and the piece settles into the session. The assigned seat determines its color.
 

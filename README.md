@@ -6,12 +6,12 @@ This branch contains the **native Android app**, plus the earlier browser design
 
 ## Try the Android app
 
-1. On your Android phone, download SubVenty Preview 11. [Download the APK directly](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/refs/heads/builds/subventy-preview11/subventy-0.4.0-preview11.apk)
+1. On your Android phone, download SubVenty Preview 11. [Download the APK directly](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/787dbd59a323eb6bbfdb76c2cdf146da7f92c203/subventy-0.4.0-preview11.apk)
 2. Open the downloaded APK. Android may ask you to allow installs from the browser or Files app you used.
 3. Launch **SubVenty**. Try **Demo Venty** or **Demo Volcano** first. Demo entries are labeled and stored separately from hardware entries.
 4. For a real device, allow Nearby devices/Bluetooth access, enable Bluetooth, select **Scan for devices**, then select your Venty or Volcano.
 
-You can also download the ZIP and extract the APK from it. [Download the ZIP](https://github.com/thehillbeyondthisone/venty-android-umbrella/archive/refs/heads/builds/subventy-preview11.zip)
+You can also download the ZIP and extract the APK from it. [Download the ZIP](https://github.com/thehillbeyondthisone/venty-android-umbrella/archive/787dbd59a323eb6bbfdb76c2cdf146da7f92c203.zip)
 
 Preview 11 is version **0.4.0-subventy.11** (code 19). Install it over an earlier preview to retain your local archive and preferences.
 

@@ -1,5 +1,7 @@
 # SubVenty Preview 10
 
+[Current preview with live draw effects](../iteration11/README.md)
+
 [Download the Android APK directly](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/fdc7bb4484e50c126543be440efb41651b223726/subventy-0.4.0-preview10.apk) · [Download the ZIP and extract the APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/archive/fdc7bb4484e50c126543be440efb41651b223726.zip)
 
 **Device → Session objects** and **Archive → Draw sessions** use the full app area. Resin Window has layered translucent resin, internal bubbles and a warm refracted backdrop. Kinetic Mobile has a brass suspension rig, lit glass beads and a cool engraved backdrop. Sparse sessions give the pieces more room. Both scenes keep each piece’s shape as they adapt to a phone screen.
