@@ -600,7 +600,7 @@ private fun WrappedTeaser(history: List<SessionRecord>, onClick: () -> Unit, mod
             io.github.orth4x0r.venty.session.wrappedFor(history, java.time.YearMonth.from(java.time.Instant.ofEpochMilli(it.startMs).atZone(zone)), zone)
         }
     } ?: return
-    val name = w.month.month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
+    val name = w.month.month.getDisplayName(java.time.format.TextStyle.FULL, androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
     val shimmer = io.github.orth4x0r.venty.ui.shimmerBrush(listOf(VentyColors.Heat, VentyColors.Ember), enabled = true)
     val figure = MaterialTheme.typography.headlineSmall.let { st -> shimmer?.let { st.copy(brush = it) } ?: st.copy(color = VentyColors.Heat) }
     Row(

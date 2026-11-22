@@ -30,6 +30,8 @@ class DemoLink : VentyLink {
     private var tempTenths = 240.0
     private var autoOffTicks = 0
     private var heatTicks = 0
+    private var drawTicks = 0
+    private var nextDraw = 0
     private var brightness = 6
     private var vibration = true
     private var boostTimeoutDisabled = false
@@ -88,6 +90,16 @@ class DemoLink : VentyLink {
     /** A signal that wanders around -60 dBm, so the find-my radar has something to show. */
     override suspend fun readRssi(): Int = -60 + (kotlin.random.Random.nextInt(-12, 13))
 
+    internal suspend fun simulateDraw() = lock.withLock {
+        if (drawTicks == 0 && state.setpointReached && state.heaterMode.isHeating && state.autoOffSeconds < AUTO_OFF_SECONDS) {
+            drawTicks = DEMO_DRAW_TICKS[nextDraw]
+            nextDraw = (nextDraw + 1) % DEMO_DRAW_TICKS.size
+            autoOffTicks = AUTO_OFF_SECONDS * TICKS_PER_SECOND
+            state = state.copy(autoOffSeconds = AUTO_OFF_SECONDS)
+            out.trySend(VentyProtocol.encodeStatus(state))
+        }
+    }
+
     override fun close() {
         scope.cancel()
         out.close()
@@ -131,9 +143,9 @@ class DemoLink : VentyLink {
 
         val reached = heating && abs(tempTenths - goal) < 5
         if (reached) {
-            autoOffTicks--
+            if (drawTicks > 0) drawTicks-- else autoOffTicks--
             if (autoOffTicks <= 0) state = state.copy(heaterMode = HeaterMode.Off)
-        }
+        } else drawTicks = 0
         if (heating) heatTicks++
         val battery = if (heating && heatTicks % 300 == 0) max(0, state.battery - 1) else state.battery
 
@@ -151,5 +163,6 @@ class DemoLink : VentyLink {
         const val TICKS_PER_SECOND = 10
         const val AUTO_OFF_SECONDS = 120
         const val AMBIENT = 240.0
+        val DEMO_DRAW_TICKS = intArrayOf(16, 34, 23)
     }
 }

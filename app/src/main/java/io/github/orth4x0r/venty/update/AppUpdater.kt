@@ -42,7 +42,7 @@ object AppUpdater {
         data class Failed(val message: String, val update: UpdateInfo? = null) : State
     }
 
-    private const val REPO = "orth4x0r/venty-android"
+    private const val REPO = "thehillbeyondthisone/venty-android-umbrella"
     private const val LATEST_URL = "https://api.github.com/repos/$REPO/releases/latest"
     private const val AUTO_CHECK_EVERY_MS = 12 * 60 * 60 * 1000L
     private const val PREFS = "updates"

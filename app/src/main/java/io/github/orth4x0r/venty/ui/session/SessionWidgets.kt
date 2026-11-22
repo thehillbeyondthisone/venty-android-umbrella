@@ -329,6 +329,20 @@ private fun PuffRing(startMs: Long, active: Boolean, targetMs: Long, buzz: Boole
     }
 }
 
+/** Keep the existing optional draw feedback when the display uses a tray instead of a ring. */
+@Composable
+internal fun DrawTimerBuzz(startMs: Long?, targetMs: Long, enabled: Boolean) {
+    val context = LocalContext.current
+    LaunchedEffect(startMs, targetMs, enabled) {
+        if (!enabled || startMs == null) return@LaunchedEffect
+        val remaining = targetMs - (System.currentTimeMillis() - startMs)
+        if (remaining > 0) {
+            kotlinx.coroutines.delay(remaining)
+            context.doubleBuzz()
+        }
+    }
+}
+
 /** A short double buzz. Does nothing if the phone has no vibrator. */
 private fun Context.doubleBuzz() {
     try {

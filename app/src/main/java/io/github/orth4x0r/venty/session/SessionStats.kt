@@ -48,6 +48,8 @@ class SessionStatsAccumulator(startMs: Long) {
         openRecordedMs = 0L
     }
 
+    fun onPuffResumed(atMs: Long) { openStartMs = atMs }
+
     /**
      * A draw ended. The detector merges a resumed puff into the one before it and reports the
      * whole length again, so only the part not yet counted is added to the total.
@@ -57,6 +59,7 @@ class SessionStatsAccumulator(startMs: Long) {
         totalDrawMs += (d - openRecordedMs).coerceAtLeast(0L)
         openRecordedMs = d
         longestDrawMs = maxOf(longestDrawMs, d)
+        openStartMs = null
     }
 
     /** Closes the last target's stretch and any draw still open when the session ends. */

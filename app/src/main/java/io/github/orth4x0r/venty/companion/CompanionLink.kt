@@ -83,6 +83,7 @@ object CompanionLink {
             override fun onDeviceFound(intentSender: IntentSender) = onConfirm(intentSender)
 
             // API 33+: the id is what Android 16 wants for presence observing.
+            @androidx.annotation.RequiresApi(33)
             override fun onAssociationCreated(associationInfo: AssociationInfo) {
                 val edit = prefs(context).edit().putInt(KEY_ID, associationInfo.id)
                 associationInfo.deviceMacAddress?.toString()?.uppercase()?.let { edit.putString(KEY_ADDRESS, it) }

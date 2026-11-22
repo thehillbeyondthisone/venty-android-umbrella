@@ -106,6 +106,7 @@ class HeaterTileService : TileService() {
         checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
 
     @Suppress("DEPRECATION") // The Intent overload is the only one before Android 14.
+    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated") // Intent is required below API 34; guarded below.
     private fun openApp() {
         val intent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (Build.VERSION.SDK_INT >= 34) {
