@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import io.github.orth4x0r.venty.session.DrawBall
+import io.github.orth4x0r.venty.session.DrawSeat
 import io.github.orth4x0r.venty.session.InProgressDraw
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -57,7 +58,15 @@ internal class SculptureProjection(width: Float, height: Float) {
 }
 
 internal class SculptureStage(private val view: DrawView) {
-    private data class Flight(val ball: DrawBall, val start: Long, val grow: Long, val zoomFrom: Float) {
+    private data class Formation(val focus: Offset, val mount: Offset, val exposure: LiveExposure)
+
+    private data class Flight(
+        val ball: DrawBall,
+        val start: Long,
+        val grow: Long,
+        val zoomFrom: Float,
+        val arrival: Formation?,
+    ) {
         val end: Long get() = start + grow + 470L
     }
 
@@ -65,6 +74,8 @@ internal class SculptureStage(private val view: DrawView) {
 
     private var records: List<DrawBall> = emptyList()
     private var active: InProgressDraw? = null
+    private var nextSeat: DrawSeat? = null
+    private var standby = false
     private var mobile: KineticMobile? = if (view == DrawView.Mobile) KineticMobile(emptyList()) else null
     private var resin: List<SculptureMark> = emptyList()
     private var flight: Flight? = null
@@ -80,20 +91,27 @@ internal class SculptureStage(private val view: DrawView) {
     var replayingId by mutableStateOf<Long?>(null)
         private set
 
-    fun show(balls: List<DrawBall>, draw: InProgressDraw?) {
+    fun show(balls: List<DrawBall>, draw: InProgressDraw?, nextSeat: DrawSeat?, standby: Boolean) {
         val next = if (draw == null) balls else balls.filterNot { it.startMs == draw.startMs }
         val newest = next.lastOrNull()
-        val arrival = draw == null && newest != null && active?.startMs == newest.startMs
+        val previousDraw = active
+        val arrival = if (draw == null && newest != null && previousDraw?.startMs == newest.startMs) {
+            formation(previousDraw.seat, exposureAt(newest.durationMs, motion = true))
+        } else null
         active = draw
+        this.nextSeat = nextSeat
+        this.standby = standby
         if (records != next) {
             val previousZoom = enlargement
             records = next
             clearFlight()
             pull = null
             animateUntil = 0L
-            if (view == DrawView.Mobile) mobile = KineticMobile(next, previous = mobile.takeIf { arrival })
+            if (view == DrawView.Mobile) mobile = KineticMobile(next, previous = mobile.takeIf { arrival != null })
             else resin = next.mapIndexed { i, ball -> ball.resinMark(i) }
-            if (arrival && ValueAnimator.areAnimatorsEnabled()) startFlight(newest, 0L, previousZoom)
+            if (arrival != null && newest != null && ValueAnimator.areAnimatorsEnabled()) {
+                startFlight(newest, 0L, previousZoom, arrival)
+            }
         }
         invalidate()
     }
@@ -177,8 +195,8 @@ internal class SculptureStage(private val view: DrawView) {
             return animation.zoomFrom + (target - animation.zoomFrom) * ease
         }
 
-    private fun startFlight(ball: DrawBall, grow: Long, zoomFrom: Float = enlargement) {
-        flight = Flight(ball, SystemClock.uptimeMillis(), grow, zoomFrom)
+    private fun startFlight(ball: DrawBall, grow: Long, zoomFrom: Float = enlargement, arrival: Formation? = null) {
+        flight = Flight(ball, SystemClock.uptimeMillis(), grow, zoomFrom, arrival)
         replayingId = ball.startMs
         mobile?.releaseForArrival(ball.startMs)
     }
@@ -197,13 +215,49 @@ internal class SculptureStage(private val view: DrawView) {
         revision++
     }
 
+    private fun formation(seat: DrawSeat?, exposure: LiveExposure): Formation {
+        val model = mobile ?: return Formation(ResinFocus, ResinFocus, exposure)
+        val mount = model.geometry().firstOrNull { it.marks.first().mark.ball.seat == seat }?.beamPoint
+            ?: model.beamPoint(0f)
+        return Formation(Offset(mount.x.coerceIn(95f, SCULPTURE_WIDTH - 95f), 174f), mount, exposure)
+    }
+
+    private fun DrawScope.paintLight(
+        optics: Formation,
+        viewport: Size,
+        projection: SculptureProjection,
+        seat: DrawSeat?,
+        fade: Float = 1f,
+    ) {
+        val focus = projection.point(optics.focus)
+        if (view == DrawView.Mobile) {
+            drawMobileLight(viewport, projection.point(optics.mount), focus, seatColor(seat), optics.exposure, fade)
+        } else {
+            drawResinLight(viewport, focus, seatColor(seat), optics.exposure, fade)
+        }
+    }
+
     fun draw(scope: DrawScope, selectedId: Long?) = with(scope) {
         // Invalidate Canvas drawing directly as the simulation advances, without relaying out its controls.
         @Suppress("UNUSED_VARIABLE") val frame = revision
         val projection = SculptureProjection(size.width, size.height)
+        val viewport = Size(size.width / projection.unit, size.height / projection.unit)
+        val drawing = active
+        val liveOptics = drawing?.let { formation(it.seat, exposureAt(elapsedDraw, ValueAnimator.areAnimatorsEnabled())) }
         scale(projection.unit, projection.unit, pivot = Offset.Zero) {
             val inFlight = flight
             val rig = mobile
+            when {
+                liveOptics != null && drawing != null -> paintLight(liveOptics, viewport, projection, drawing.seat)
+                inFlight?.arrival != null -> {
+                    val fade = (1f - (now - inFlight.start) / 470f).coerceIn(0f, 1f)
+                    paintLight(inFlight.arrival, viewport, projection, inFlight.ball.seat, fade * fade)
+                }
+                standby && inFlight == null -> {
+                    val port = if (rig == null) ResinFocus else rig.beamPoint(0f)
+                    drawStandby(viewport, projection.point(port), seatColor(nextSeat), mobile = rig != null)
+                }
+            }
             val targets = if (rig != null) {
                 val geometry = rig.geometry()
                 drawRig(rig, geometry, projection, hiddenId = inFlight?.ball?.startMs)
@@ -212,26 +266,31 @@ internal class SculptureStage(private val view: DrawView) {
             for (target in targets) {
                 val selected = target.ball.startMs == selectedId
                 var hardened = 1f
+                var releaseBlend = 1f
+                val launch = inFlight?.arrival?.takeIf { inFlight.ball.startMs == target.ball.startMs }
                 val current = if (inFlight?.ball?.startMs == target.ball.startMs) {
                     val grow = if (inFlight.grow == 0L) 1f else ((now - inFlight.start) / inFlight.grow.toFloat()).coerceIn(0f, 1f)
                     val fall = ((now - inFlight.start - inFlight.grow) / 470f).coerceIn(0f, 1f)
                     val time = if (rig == null) fall * fall * (3f - 2f * fall) else fall * fall
                     hardened = ((fall - .55f) / .45f).coerceIn(0f, 1f)
-                    val start = if (inFlight.grow == 0L || rig == null) LiveOrigin
+                    releaseBlend = time
+                    val start = launch?.focus ?: if (rig == null) ResinFocus
                     else Offset(target.center.x + 9f, (target.center.y - 88f).coerceAtLeast(56f))
                     target.copy(center = start + (target.center - start) * time, radius = target.radius * sqrt(.10f + .90f * grow))
                 } else target
-                val displayed = projection.mark(current, enlargement)
+                val projected = projection.mark(current, enlargement)
+                val displayed = if (launch == null) projected else projected.copy(
+                    radius = launch.exposure.radius + (projected.radius - launch.exposure.radius) * releaseBlend,
+                )
                 if (rig == null) drawResin(displayed, selected, hardened) else drawGlass(displayed, selected)
             }
-            active?.let { draw ->
+            if (drawing != null && liveOptics != null) {
                 val marker = SculptureMark(
-                    DrawBall(draw.startMs, elapsedDraw, draw.seat),
-                    LiveOrigin,
-                    sculptureRadius(if (ValueAnimator.areAnimatorsEnabled()) elapsedDraw else 800L),
+                    DrawBall(drawing.startMs, elapsedDraw, drawing.seat),
+                    projection.point(liveOptics.focus),
+                    liveOptics.exposure.radius,
                 )
-                val displayed = projection.mark(marker, enlargement)
-                if (rig == null) drawResin(displayed, selected = false, hardened = 0f) else drawGlass(displayed, selected = false)
+                if (rig == null) drawResin(marker, selected = false, hardened = .42f) else drawGlass(marker, selected = false)
             }
         }
     }
@@ -300,7 +359,7 @@ internal fun SculptureCanvas(
     ) { stage.draw(this, selectedId) }
 }
 
-private val LiveOrigin = Offset(SCULPTURE_WIDTH / 2, 43f)
+private val ResinFocus = Offset(SCULPTURE_WIDTH / 2, 117f)
 private val Brass = Color(0xFFD9C7A0)
 private val Wire = Color(0xA6C1CBC0)
 

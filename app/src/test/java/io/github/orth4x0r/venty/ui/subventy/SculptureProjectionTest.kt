@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import io.github.orth4x0r.venty.session.DrawBall
 import io.github.orth4x0r.venty.session.DrawSeat
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SculptureProjectionTest {
@@ -27,5 +28,19 @@ class SculptureProjectionTest {
         assertEquals(380f, center.x, .001f)
         assertEquals(131f, center.y, .001f)
         assertEquals(262f / 330f, projection.unit, .001f)
+    }
+
+    @Test
+    fun liveExposureRespondsImmediatelyAndGrowsDuringAnEstimatedDraw() {
+        val onset = exposureAt(0L, motion = true)
+        val early = exposureAt(350L, motion = true)
+        val late = exposureAt(2_200L, motion = true)
+
+        assertTrue(onset.light > .4f)
+        assertTrue(early.radius > onset.radius)
+        assertTrue(late.radius > early.radius)
+        assertTrue(late.phase > early.phase)
+        assertTrue(exposureAt(Long.MAX_VALUE, motion = true).radius <= 53f)
+        assertEquals(exposureAt(0L, motion = false), exposureAt(2_200L, motion = false))
     }
 }

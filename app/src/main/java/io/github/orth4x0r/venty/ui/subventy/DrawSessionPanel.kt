@@ -123,7 +123,7 @@ internal fun DrawSessionPanel(
         return
     }
     SessionDrawViews(tray.balls, onBack = onBack, active = tray.active,
-        simulate = simulate, canSimulate = canSimulate) {
+        live = true, nextSeat = tray.selected, simulate = simulate, canSimulate = canSimulate) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -193,6 +193,8 @@ private fun SessionDrawViews(
     onBack: () -> Unit,
     active: InProgressDraw? = null,
     backLabel: String = "Back to Device",
+    live: Boolean = false,
+    nextSeat: DrawSeat? = null,
     simulate: (() -> Unit)? = null,
     canSimulate: Boolean = false,
     footer: @Composable () -> Unit,
@@ -265,13 +267,12 @@ private fun SessionDrawViews(
                     PersonRows(balls.filterNot { it.startMs == active?.startMs })
                 }
             } else {
-                LaunchedEffect(stage, visible, activeHere) { stage.show(visible, activeHere) }
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                LaunchedEffect(stage, visible, activeHere, live, nextSeat) {
+                    stage.show(visible, activeHere, nextSeat, standby = live && current == 0)
+                }
+                Box(Modifier.weight(1f).fillMaxWidth()) {
                     SculptureCanvas(stage, view, selected?.startMs,
                         onBrowse = if (canBrowse) ::browse else null, onInspect = ::inspect)
-                    if (visible.isEmpty() && activeHere == null) {
-                        DeckLabel("Finished draws will appear here", 12, S7.Muted)
-                    }
                 }
                 if (current > 0) {
                     TextButton(onClick = { page = 0; inspectedId = null }, modifier = Modifier.padding(start = 10.dp)) {
@@ -336,7 +337,7 @@ private fun drawPage(balls: List<DrawBall>, page: Int): List<DrawBall> {
 private fun PersonRows(balls: List<DrawBall>) {
     val groups = remember(balls) { balls.groupBy { it.seat } }
     if (balls.isEmpty()) {
-        DeckLabel("Finished draws will appear here by color.", 11, S7.Muted)
+        DeckLabel("No recorded draws yet.", 11, S7.Muted)
         return
     }
     (DrawSeat.entries + listOf<DrawSeat?>(null)).forEach { seat ->
