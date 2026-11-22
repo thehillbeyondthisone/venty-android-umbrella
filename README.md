@@ -1,6 +1,6 @@
 # SubVenty Preview 10
 
-[Download the APK directly](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/refs/heads/builds/subventy-preview10/subventy-0.4.0-preview10.apk) · [GitHub release](https://github.com/thehillbeyondthisone/venty-android-umbrella/releases/tag/v0.4.0-subventy.10)
+[Download the APK directly](https://raw.githubusercontent.com/thehillbeyondthisone/venty-android-umbrella/refs/heads/builds/subventy-preview10/subventy-0.4.0-preview10.apk) · [Download the ZIP and extract the APK](https://github.com/thehillbeyondthisone/venty-android-umbrella/archive/refs/heads/builds/subventy-preview10.zip)
 
 Resin Window and Kinetic Mobile fill the app display in live and saved sessions. Install over your current SubVenty preview to keep your archive.
 
